@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>MoodLedger · 情绪记账</title>
+<meta name="theme-color" content="#7C5CFC" />
+<meta name="description" content="MoodLedger 情绪记账 · 记录每一笔消费背后的心情" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="MoodLedger" />
+<style>
+  :root{
+    --bg:#F8F9FE; --card:#ffffff;
+    --purple:#7C5CFC; --purple2:#9B7AFF; --purple-d:#6B4FCC;
+    --pink:#FF6B9D; --pink2:#FF8FB4; --pink-d:#E8527A;
+    --teal:#4ECDC4; --teal-d:#2BAD9E;
+    --amber:#FFB347; --amber-d:#C08820;
+    --ink:#1A1A2E; --ink2:#3D3D5C;
+    --muted:#9B8EC4; --muted2:#B0B4C8; --muted3:#C8CBD8;
+    --line:rgba(124,92,252,0.07);
+    --head:'Plus Jakarta Sans','Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --body:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--body);
+    background:linear-gradient(145deg,#6B4FCC 0%,#9B7AFF 35%,#FF6B9D 75%,#FFB347 100%);
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:24px 16px;color:var(--ink);
+  }
+  ::-webkit-scrollbar{display:none;}
+  .noscroll{scrollbar-width:none;-ms-overflow-style:none;}
+
+  .frame-wrap{position:relative;width:393px;flex-shrink:0;}
+  .btn-side{position:absolute;background:#4A3080;}
+  .bezel{
+    width:393px;height:852px;border-radius:52px;
+    background:linear-gradient(145deg,#2D1E6B,#1A1230);padding:3px;position:relative;
+    box-shadow:0 60px 120px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .screen{width:100%;height:100%;border-radius:50px;overflow:hidden;background:var(--bg);position:relative;transform:translateZ(0);}
+  .island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#0A0A0A;border-radius:20px;z-index:100;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(255,255,255,.05);}
+  .island .cam{width:10px;height:10px;border-radius:50%;background:#1a1a1a;border:1.5px solid #2a2a2a;display:flex;align-items:center;justify-content:center;}
+  .island .cam i{width:4px;height:4px;border-radius:50%;background:#0D3B3B;display:block;}
+  .scroller{width:100%;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+  .home-ind{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);width:120px;height:5px;background:rgba(255,255,255,.3);border-radius:3px;}
+
+  .page{min-height:852px;padding-bottom:96px;background:var(--bg);position:relative;}
+  .card{background:var(--card);border-radius:16px;box-shadow:0 2px 12px rgba(124,92,252,.08);}
+  .px5{padding-left:20px;padding-right:20px;}
+  .row{display:flex;align-items:center;}
+  .between{display:flex;align-items:center;justify-content:space-between;}
+  .head-grad{background:linear-gradient(160deg,#EDE8FF 0%,#FFE8F3 60%,#F8F9FE 100%);}
+  .head-grad-2{background:linear-gradient(160deg,#EDE8FF 0%,#F8F9FE 100%);}
+  h1,h2,h3{font-family:var(--head);}
+  button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit;}
+  input,select{font-family:inherit;}
+  .pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;}
+  .ib{display:inline-flex;align-items:center;justify-content:center;}
+  .tap{transition:transform .12s ease;}
+  .tap:active{transform:scale(.94);}
+  .grow{flex:1;min-width:0;}
+  .trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .field{width:100%;font-size:15px;border-radius:14px;padding:14px 16px;outline:none;background:#F4F5FB;color:#1A1A2E;border:1.5px solid transparent;transition:border .2s;}
+  .field:focus{border-color:rgba(124,92,252,.4);background:#fff;}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  @keyframes slideX{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes pop{from{opacity:0;transform:scale(.96) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+  @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+  @keyframes wave{0%,100%{height:6px;}50%{height:18px;}}
+  @keyframes grow-w{from{width:0 !important;}}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+  .anim-up{animation:fadeUp .5s ease both;}
+  .anim-in{animation:fadeIn .4s ease both;}
+  .anim-x{animation:slideX .35s ease both;}
+  .anim-pop{animation:pop .25s ease both;}
+  .d1{animation-delay:.05s;}.d2{animation-delay:.1s;}.d3{animation-delay:.18s;}.d4{animation-delay:.24s;}.d5{animation-delay:.3s;}
+  #app.no-anim *{animation:none !important;animation-delay:0s !important;}
+
+  #nav{position:absolute;left:0;right:0;bottom:0;z-index:50;}
+  .nav{position:static;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-top:1px solid var(--line);}
+  .nav-inner{display:flex;align-items:flex-end;justify-content:space-around;padding:4px 8px 10px;}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 10px;position:relative;min-width:56px;}
+  .nav-item .lbl{font-size:10px;transition:.2s;}
+  .nav-pill{position:absolute;inset:-4px 2px;border-radius:12px;background:rgba(124,92,252,.1);z-index:0;}
+  .nav-center{display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:-20px;}
+  .nav-fab{position:relative;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7C5CFC 0%,#FF6B9D 100%);box-shadow:0 0 24px rgba(124,92,252,.55),0 4px 16px rgba(255,107,157,.35);}
+  .nav-fab .glow{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.18) 0%,transparent 70%);animation:pulse 2s infinite;}
+
+  .seg{display:flex;gap:4px;padding:2px;border-radius:12px;background:#EEF0F8;}
+  .seg button{flex:1;padding:6px;border-radius:9px;font-size:11px;font-weight:700;color:var(--muted);transition:.2s;}
+  .seg button.on{background:#fff;color:var(--purple);box-shadow:0 1px 6px rgba(124,92,252,.12);}
+  .switch{width:48px;height:24px;border-radius:999px;position:relative;transition:.2s;flex-shrink:0;}
+  .switch .knob{position:absolute;top:2px;width:20px;height:20px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .25s cubic-bezier(.4,1.4,.6,1);}
+
+  .backdrop{position:absolute;inset:0;background:rgba(26,26,46,.45);backdrop-filter:blur(4px);z-index:60;animation:fadeIn .25s ease;}
+  .sheet{position:absolute;bottom:0;left:0;right:0;z-index:70;background:var(--bg);border-radius:24px 24px 0 0;box-shadow:0 -8px 40px rgba(124,92,252,.18);animation:slideUp .32s cubic-bezier(.3,1,.5,1);display:flex;flex-direction:column;}
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .sheet .handle{width:36px;height:4px;border-radius:2px;background:#E2E4EF;margin:12px auto 0;flex-shrink:0;}
+  .toast{position:absolute;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;border-radius:20px;padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;z-index:90;white-space:nowrap;box-shadow:0 4px 16px rgba(78,205,196,.4);animation:pop .25s ease;}
+  .empty{text-align:center;padding:32px 20px;color:#B0B4C8;}
+  .empty .ico{font-size:40px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+  <div class="frame-wrap">
+    <div class="btn-side" style="left:-4px;top:88px;width:4px;height:36px;border-radius:4px 0 0 4px"></div>
+    <div class="btn-side" style="left:-4px;top:136px;width:4px;height:64px;border-radius:4px 0 0 4px"></div>
+    <div class="btn-side" style="left:-4px;top:212px;width:4px;height:64px;border-radius:4px 0 0 4px"></div>
+    <div class="btn-side" style="right:-4px;top:152px;width:4px;height:80px;border-radius:0 4px 4px 0"></div>
+    <div class="bezel">
+      <div class="screen">
+        <div class="island"><div class="cam"><i></i></div></div>
+        <div class="scroller noscroll" id="scroller"><div id="app"></div></div>
+        <div id="nav"></div>
+        <div id="overlay"></div>
+      </div>
+    </div>
+    <div class="home-ind"></div>
+  </div>
+
+<script>
+"use strict";
+/* ============================================================================
+   MoodLedger v2 — 真实可用的情绪记账 App（单文件 · 零依赖 · 本地持久化）
+============================================================================ */
+
+/* ---------- hyperscript ---------- */
+function h(tag, attrs, ...kids){
+  const e=document.createElement(tag);
+  if(attrs){
+    for(const k in attrs){
+      const v=attrs[k];
+      if(v==null||v===false) continue;
+      if(k==='style'&&typeof v==='object'){Object.assign(e.style,v);}
+      else if(k==='class'){e.className=v;}
+      else if(k==='html'){e.innerHTML=v;}
+      else if(k.startsWith('on')&&typeof v==='function'){e.addEventListener(k.slice(2).toLowerCase(),v);}
+      else if(k==='ref'&&typeof v==='function'){v(e);}
+      else{e.setAttribute(k,v);}
+    }
+  }
+  const add=(c)=>{ if(c==null||c===false) return; if(Array.isArray(c)){c.forEach(add);return;} e.appendChild(c.nodeType?c:document.createTextNode(String(c))); };
+  kids.forEach(add);
+  return e;
+}
+const $=(s,r=document)=>r.querySelector(s);
+const fmt=(n)=>Number(Math.round(n)).toLocaleString('zh-CN');
+
+/* ---------- icons ---------- */
+function svg(paths,o){o=o||{};const s=o.size||18,sw=o.sw||2,col=o.color||'currentColor';return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;}
+const I={
+  chevR:(o)=>svg('<polyline points="9 18 15 12 9 6"/>',o),
+  chevL:(o)=>svg('<polyline points="15 18 9 12 15 6"/>',o),
+  refresh:(o)=>svg('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',o),
+  chat:(o)=>svg('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',o),
+  back:(o)=>svg('<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',o),
+  check:(o)=>svg('<polyline points="20 6 9 17 4 12"/>',o),
+  plus:(o)=>svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',o),
+  x:(o)=>svg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',o),
+  cam:(o)=>svg('<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',o),
+  img:(o)=>svg('<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',o),
+  clip:(o)=>svg('<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',o),
+  mic:(o)=>svg('<path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>',o),
+  flame:(o)=>svg('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',o),
+  send:(o)=>svg('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',o),
+  brain:(o)=>svg('<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z"/>',o),
+  trash:(o)=>svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',o),
+  spark:(o)=>svg('<path d="M12 3l1.9 5.8L19.5 11l-5.6 2.2L12 19l-1.9-5.8L4.5 11l5.6-2.2z"/>',o),
+  settings:(o)=>svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',o),
+  settings2:(o)=>svg('<line x1="21" y1="4" x2="14" y2="4"/><line x1="10" y1="4" x2="3" y2="4"/><line x1="21" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="3" y2="12"/><line x1="21" y1="20" x2="16" y2="20"/><line x1="12" y1="20" x2="3" y2="20"/><line x1="14" y1="2" x2="14" y2="6"/><line x1="8" y1="10" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="22"/>',o),
+  download:(o)=>svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',o),
+  users:(o)=>svg('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',o),
+  palette:(o)=>svg('<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',o),
+  filter:(o)=>svg('<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',o),
+  home:(o)=>svg('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',o),
+  trend:(o)=>svg('<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',o),
+  target:(o)=>svg('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',o),
+  user:(o)=>svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',o),
+  phone:(o)=>svg('<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/>',o),
+  lock:(o)=>svg('<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',o),
+  logout:(o)=>svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',o),
+  eye:(o)=>svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',o),
+  edit:(o)=>svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>',o),
+  calendar:(o)=>svg('<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',o),
+};
+
+/* ============================================================================
+   STATIC METADATA
+============================================================================ */
+const COACHES={
+  '闺蜜':{id:'闺蜜',name:'💅 毒舌好友',preview:'"你又买？买买买！"',desc:'一针见血，好友式调侃',bg:'linear-gradient(135deg,#FFE4EE,#FFD0E5)',borderColor:'#FF6B9D',textColor:'#E8527A',tag:'毒舌好友',avatar:'💅'},
+  '财长':{id:'财长',name:'💼 理性财长',preview:'"让数据告诉你答案"',desc:'专业全面，提供平替方案',bg:'linear-gradient(135deg,#F0F0F5,#E8E8F0)',borderColor:'#8B8FA8',textColor:'#4A4A6A',tag:'理性财长',avatar:'💼'},
+  '小熊':{id:'小熊',name:'🧸 疗愈小熊',preview:'"没关系的，抱抱你~"',desc:'无条件安慰，治愈内耗',bg:'linear-gradient(135deg,#FFF8E0,#FFEEC8)',borderColor:'#FFB347',textColor:'#C08820',tag:'疗愈小熊',avatar:'🧸'},
+};
+const COACH_ORDER=['闺蜜','财长','小熊'];
+const DEFAULT_COACH='财长';
+
+const TYPE_META={
+  '餐饮':{icon:'🍜',color:'#FFB347'},'购物':{icon:'🛍️',color:'#FF6B9D'},'娱乐':{icon:'🎵',color:'#7C5CFC'},
+  '运动':{icon:'🏃',color:'#4ECDC4'},'交通':{icon:'🚇',color:'#5AB0E0'},'美妆':{icon:'🧴',color:'#C47AFF'},
+  '学习':{icon:'📚',color:'#9B7AFF'},'其他':{icon:'📦',color:'#B0B4C8'},
+};
+const PURCHASE_TYPES=['餐饮','购物','娱乐','运动','交通','美妆','学习','其他'];
+const MOTIVATIONS=[{id:'悦己充电',emoji:'😊'},{id:'刚需维生',emoji:'🛒'},{id:'社交人设',emoji:'🎉'},{id:'压力发泄',emoji:'😰'}];
+const MOTIV_COLORS={'悦己充电':{bg:'rgba(124,92,252,.1)',color:'#7C5CFC'},'刚需维生':{bg:'rgba(78,205,196,.1)',color:'#2BAD9E'},'社交人设':{bg:'rgba(255,179,71,.1)',color:'#C08820'},'压力发泄':{bg:'rgba(255,107,157,.1)',color:'#E8527A'}};
+const RECURRING=[{id:'daily',label:'每天'},{id:'weekly',label:'每周'},{id:'biweekly',label:'每两周'},{id:'monthly',label:'每月'},{id:'quarterly',label:'每季'}];
+const GOAL_COLORS=['#7C5CFC','#FF6B9D','#4ECDC4','#FFB347','#9B7AFF'];
+const GOAL_ICONS=['🎯','📱','🎧','📚','💻','✈️','👟','📷','🎸','⌚','🚗','🏠'];
+const CAT_ICONS=['🍜','🛍️','🎵','🏃','🧴','📚','✈️','🏥','💻','🎮','🐾','🎨'];
+const CAT_COLORS=['#FFB347','#FF6B9D','#7C5CFC','#4ECDC4','#FF8FB4','#9B7AFF','#5AB0E0','#FF6B6B'];
+const SYMBOLS=['🍔','🍜','🍱','🍰','🍦','☕','🧋','🍺','🍎','🛒','🛍️','👗','👟','👜','💄','🧴','💊','🏥','💉','🚇','🚌','🚗','⛽','🅿️','🚲','✈️','🏨','🧳','🎮','🎬','🎵','🎤','🎟️','📚','✏️','🎓','💻','📱','🖥️','🎁','🐱','🐶','🌷','💐','🏋️','⚽','🧘','💈','💅','🎨','🎸','🏠','💡','💧','🔌','🔧','📦','💰','🧾','💳','🚬','👶','🍼','❤️','🎉','🐾','📷','⌚','🧸'];
+const MOTIV_EMOJIS=['😊','🛒','🎉','😰','😌','🤑','😔','😴','🥳','😤','🫶','🧠','💪','🎁','🔥','🌈'];
+const WEEKDAYS=['一','二','三','四','五','六','日'];
+const WK=['日','一','二','三','四','五','六'];
+
+/* ============================================================================
+   STORE (localStorage persistence, with in-memory fallback)
+============================================================================ */
+const LS_KEY='moodledger_v2';            // localStorage 兜底/备份键
+const IDB_NAME='MoodLedgerDB', IDB_VER=1; // 自动创建的本地数据库
+let _mem=null;
+function baseData(){ return {users:{},session:null,profiles:{},nextUserId:1001,ai:defaultAI()}; }
+function defaultAI(){ return {enabled:false,vision:false,apiKey:'',baseUrl:'https://api.deepseek.com',model:'deepseek-chat'}; }
+function newProfile(phone,nickname){
+  return {phone,id:null,nickname:nickname||'',gender:null,coach:DEFAULT_COACH,monthlyBudget:null,onboarded:false,createdAt:Date.now(),
+    transactions:[],goals:[],contributions:[],categoryBudgets:[],customTypes:[],customMotivs:[],recurrings:[],memories:[]};
+}
+function currentProfile(){ const s=Store.data.session; return s?Store.data.profiles[s]:null; }
+
+/* ---------- IndexedDB layer（内存缓存 + 异步落库，渲染仍同步） ---------- */
+let _idb=null;
+const Store={ data:baseData(), ready:false, save(){ persist(); } };
+function commit(){ Store.save(); render(); }
+
+function openIDB(){
+  return new Promise((res,rej)=>{
+    if(typeof indexedDB==='undefined'||!indexedDB){ return rej('no-idb'); }
+    let r; try{ r=indexedDB.open(IDB_NAME,IDB_VER); }catch(e){ return rej(e); }
+    r.onupgradeneeded=(e)=>{ const db=e.target.result;
+      if(!db.objectStoreNames.contains('users')) db.createObjectStore('users',{keyPath:'phone'});
+      if(!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles',{keyPath:'phone'});
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta',{keyPath:'key'});
+    };
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error||'idb-open-error');
+  });
+}
+function idbAll(db,store){ return new Promise((res)=>{ try{ const out=[]; const rq=db.transaction(store,'readonly').objectStore(store).openCursor(); rq.onsuccess=(e)=>{ const c=e.target.result; if(c){ out.push(c.value); c.continue(); } else res(out); }; rq.onerror=()=>res(out); }catch(e){ res([]); } }); }
+function idbGet(db,store,key){ return new Promise((res)=>{ try{ const rq=db.transaction(store,'readonly').objectStore(store).get(key); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>res(null); }catch(e){ res(null); } }); }
+
+function migrateFromLS(){
+  try{ const raw=localStorage.getItem(LS_KEY); if(!raw) return false; const o=JSON.parse(raw); if(!o) return false;
+    Store.data.users=o.users||{}; Store.data.profiles=o.profiles||{}; Store.data.session=o.session||null; Store.data.nextUserId=o.nextUserId||1001;
+    if(o.ai) Store.data.ai=Object.assign(defaultAI(),o.ai);
+    Object.values(Store.data.users).forEach(u=>{ if(!u.id){ u.id=Store.data.nextUserId++; } const pp=Store.data.profiles[u.phone]; if(pp&&!pp.id) pp.id=u.id; });
+    return true;
+  }catch(e){ return false; }
+}
+async function loadAll(){
+  try{ _idb=await openIDB(); }catch(e){ _idb=null; }
+  if(_idb){
+    const users=await idbAll(_idb,'users'); const profiles=await idbAll(_idb,'profiles'); const meta=await idbGet(_idb,'meta','app');
+    if(users.length||profiles.length||meta){
+      Store.data.users={}; users.forEach(u=>{Store.data.users[u.phone]=u;});
+      Store.data.profiles={}; profiles.forEach(p=>{Store.data.profiles[p.phone]=p;});
+      Store.data.session=(meta&&meta.session)||null;
+      Store.data.nextUserId=(meta&&meta.nextUserId)||1001;
+      if(meta&&meta.ai) Store.data.ai=Object.assign(defaultAI(),meta.ai);
+    } else if(migrateFromLS()){
+      await persist(); // 把旧 localStorage 数据迁入数据库
+    }
+    Store.ready=true; return;
+  }
+  // 无 IndexedDB → 退回 localStorage
+  if(migrateFromLS()){ persist(); }
+  Store.ready=true;
+}
+function persist(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(Store.data)); }catch(e){ _mem=JSON.stringify(Store.data); } // 备份
+  if(!_idb) return Promise.resolve();
+  return new Promise((res)=>{
+    try{
+      const tx=_idb.transaction(['users','profiles','meta'],'readwrite');
+      const us=tx.objectStore('users'), ps=tx.objectStore('profiles'), ms=tx.objectStore('meta');
+      Object.values(Store.data.users).forEach(u=>us.put(u));
+      Object.values(Store.data.profiles).forEach(p=>ps.put(p));
+      ms.put({key:'app',session:Store.data.session,nextUserId:Store.data.nextUserId,ai:Store.data.ai});
+      tx.oncomplete=()=>res(); tx.onerror=()=>res(); tx.onabort=()=>res();
+    }catch(e){ res(); }
+  });
+}
+function nextUserId(){ const id=Store.data.nextUserId||1001; Store.data.nextUserId=id+1; return id; }
+
+/* ============================================================================
+   SELECTORS / COMPUTE  (everything derives from real user data)
+============================================================================ */
+function ym(ts){ const d=new Date(ts); return d.getFullYear()*12+d.getMonth(); }
+function nowYM(){ return ym(Date.now()); }
+function dateLabel(ts){ const d=new Date(ts); return (d.getMonth()+1)+'月'+d.getDate()+'日'; }
+function tsToInput(ts){ const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function inputToTs(str,orig){ if(!str) return orig||Date.now(); const parts=str.split('-').map(Number); if(parts.length!==3||isNaN(parts[0])) return orig||Date.now(); const o=orig?new Date(orig):new Date(); const d=new Date(parts[0],parts[1]-1,parts[2],o.getHours()||12,o.getMinutes()||0,0,0); return d.getTime(); }
+function sameMonth(ts){ return ym(ts)===nowYM(); }
+
+function monthSpentTotal(p){ return p.transactions.filter(t=>sameMonth(t.ts)).reduce((s,t)=>s+t.amount,0); }
+function catMeta(cat){ if(TYPE_META[cat]) return TYPE_META[cat]; const p=currentProfile(); if(p&&p.customTypes){ const c=p.customTypes.find(x=>x.name===cat); if(c) return {icon:c.icon,color:c.color}; } return {icon:'📦',color:'#B0B4C8'}; }
+function allTypes(p){ const customs=((p&&p.customTypes)||[]).map(c=>c.name); return PURCHASE_TYPES.filter(t=>t!=='其他').concat(customs).concat(['其他']); }
+function allMotivs(p){ return MOTIVATIONS.concat(((p&&p.customMotivs)||[])); }
+function motivMeta(name){ return MOTIV_COLORS[name]||{bg:'rgba(124,92,252,.1)',color:'#7C5CFC'}; }
+function advancePeriod(ts,period){ const d=new Date(ts); if(period==='daily')d.setDate(d.getDate()+1); else if(period==='weekly')d.setDate(d.getDate()+7); else if(period==='biweekly')d.setDate(d.getDate()+14); else if(period==='quarterly')d.setMonth(d.getMonth()+3); else d.setMonth(d.getMonth()+1); return d.getTime(); }
+function periodLabelCN(pr){ return {daily:'每天',weekly:'每周',biweekly:'每两周',monthly:'每月',quarterly:'每季'}[pr]||'每月'; }
+function processRecurrings(p){ if(!p.recurrings)return 0; let n=0; const now=Date.now(); p.recurrings.forEach(r=>{ if(r.active===false)return; let guard=0; while(r.nextRun&&r.nextRun<=now&&guard<500){ const meta=catMeta(r.category); p.transactions.push({id:'t'+r.nextRun+'_'+Math.floor(Math.random()*1e5),type:'spend',name:r.name,amount:r.amount,category:r.category,catIcon:meta.icon,catColor:meta.color,motivation:r.motivation,mood:null,recurring:true,ruleId:r.id,auto:true,ts:r.nextRun}); r.lastRun=r.nextRun; r.nextRun=advancePeriod(r.nextRun,r.period); n++; guard++; } }); return n; }
+
+function categoryAgg(p,range){
+  // range: 'current' uses this month; others approximate to all data
+  const txs=range==='current'?p.transactions.filter(t=>sameMonth(t.ts)):p.transactions;
+  const total=txs.reduce((s,t)=>s+t.amount,0);
+  const map={};
+  txs.forEach(t=>{ const c=t.category||'其他'; if(!map[c])map[c]={name:c,amount:0,icon:catMeta(c).icon,color:catMeta(c).color}; map[c].amount+=t.amount; });
+  const arr=Object.values(map).sort((a,b)=>b.amount-a.amount);
+  arr.forEach(c=>c.pct=total>0?Math.round((c.amount/total)*100):0);
+  return {arr,total};
+}
+function moodAgg(p){
+  const txs=p.transactions.filter(t=>sameMonth(t.ts));
+  const map={};
+  txs.forEach(t=>{ const c=t.category||'其他'; if(!map[c])map[c]={name:c,great:0,regret:0,icon:catMeta(c).icon}; if(t.mood==='great')map[c].great+=t.amount; else if(t.mood==='regret')map[c].regret+=t.amount; });
+  return Object.values(map).filter(c=>c.great>0||c.regret>0).sort((a,b)=>(b.great+b.regret)-(a.great+a.regret));
+}
+function inPeriod(ts,year,month){ const d=new Date(ts); if(d.getFullYear()!==year)return false; if(month!=null&&d.getMonth()+1!==month)return false; return true; }
+function categoryAggP(p,year,month){
+  const txs=p.transactions.filter(t=>inPeriod(t.ts,year,month));
+  const total=txs.reduce((s,t)=>s+t.amount,0); const map={};
+  txs.forEach(t=>{ const c=t.category||'其他'; if(!map[c])map[c]={name:c,amount:0,icon:catMeta(c).icon,color:catMeta(c).color}; map[c].amount+=t.amount; });
+  const arr=Object.values(map).sort((a,b)=>b.amount-a.amount); arr.forEach(c=>c.pct=total>0?Math.round((c.amount/total)*100):0);
+  return {arr,total};
+}
+function moodAggP(p,year,month){
+  const txs=p.transactions.filter(t=>inPeriod(t.ts,year,month)); const map={};
+  txs.forEach(t=>{ const c=t.category||'其他'; if(!map[c])map[c]={name:c,great:0,regret:0,icon:catMeta(c).icon}; if(t.mood==='great')map[c].great+=t.amount; else if(t.mood==='regret')map[c].regret+=t.amount; });
+  return Object.values(map).filter(c=>c.great>0||c.regret>0).sort((a,b)=>(b.great+b.regret)-(a.great+a.regret));
+}
+function monthlyTrend(p){
+  // last 6 months including current
+  const out=[]; const now=new Date();
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); const key=d.getFullYear()*12+d.getMonth();
+    const amt=p.transactions.filter(t=>ym(t.ts)===key).reduce((s,t)=>s+t.amount,0); out.push({month:(d.getMonth()+1)+'月',amount:amt,key}); }
+  return out;
+}
+function recentTxs(p,months){ const cut=nowYM()-((months||3)-1); return p.transactions.filter(t=>ym(t.ts)>=cut); }
+function computeHealth(p,txsIn){
+  const txs=txsIn||p.transactions;
+  if(txs.length===0) return null;
+  const rated=txs.filter(t=>t.mood!==null);
+  const greatAmt=txs.filter(t=>t.mood==='great').reduce((s,t)=>s+t.amount,0);
+  const regretAmt=txs.filter(t=>t.mood==='regret').reduce((s,t)=>s+t.amount,0);
+  const ratedAmt=greatAmt+regretAmt;
+  const rationalPct=ratedAmt>0?Math.round((greatAmt/ratedAmt)*100):null;
+  const impulseCount=txs.filter(t=>sameMonth(t.ts)&&(t.motivation==='压力发泄'||t.mood==='regret')).length;
+  const regretCount=txs.filter(t=>t.mood==='regret').length;
+  const regretIdx=rated.length>0?Math.round((regretCount/rated.length)*100):0;
+  const savePotential=regretAmt; // ¥ identified as optimizable
+  // score
+  let score=60;
+  if(rationalPct!=null) score=Math.round(40+rationalPct*0.5);
+  score-=impulseCount*3;
+  score=Math.max(10,Math.min(100,score));
+  const status=score>=75?'良好':score>=55?'尚可':'需注意';
+  const face=score>=75?'😊':score>=55?'🙂':'😟';
+  const dims=[
+    {label:'理性占比',score:rationalPct!=null?rationalPct:0,max:100,color:'#4ECDC4',icon:'🧠',desc:rationalPct!=null?('已评价消费中理性占 '+rationalPct+'%'):'还没有评价记录'},
+    {label:'冲动次数',score:Math.min(impulseCount,10),max:10,color:'#FF6B9D',icon:'⚡',desc:'本月冲动消费 '+impulseCount+' 次'},
+    {label:'后悔指数',score:regretIdx,max:100,color:'#FFB347',icon:'😰',desc:'后悔占比约 '+regretIdx+'%'},
+    {label:'节省潜力',score:Math.min(100,Math.round(savePotential/10)),max:100,color:'#7C5CFC',icon:'💡',desc:'识别出约 ¥'+fmt(savePotential)+' 可优化'},
+  ];
+  return {score,status,face,rationalPct,impulseCount,regretCount,regretAmt,greatAmt,dims};
+}
+
+/* ---------- coach tone wrapping ---------- */
+function toneWrap(coach,body){
+  if(coach==='闺蜜') return body;
+  if(coach==='小熊') return body;
+  return body;
+}
+function coachIntro(p){
+  const coach=(p&&p.coach)||DEFAULT_COACH, ad=addrWord(p);
+  if(coach==='闺蜜') return '来啦'+ad+'～我可是会戳穿你的哦 💅';
+  if(coach==='小熊') return '我在呢，慢慢说，我都听着 🧸';
+  return '你好，我是你的理性财长，用数据帮你做决定 💼';
+}
+function homeCoachMessages(p){
+  const coach=p.coach, h=computeHealth(p), msgs=[];
+  if(p.transactions.length===0){
+    if(coach==='闺蜜') return ['一笔账都还没记？空空如也的钱包我可看不出门道，先点下面的 ➕ 记一笔给我瞧瞧～'];
+    if(coach==='小熊') return ['还没有记录也没关系呀，今天有花钱吗？记下第一笔，我陪你一起看 🧸'];
+    return ['目前还没有消费数据。记录几笔后，我就能为你生成消费健康度与优化建议了。'];
+  }
+  const ca=categoryAgg(p,'current');
+  const top=ca.arr[0];
+  if(top){
+    if(coach==='闺蜜') msgs.push('本月你在「'+top.name+'」上砸了 ¥'+fmt(top.amount)+'，占了 '+top.pct+'%！这是要把购物车搬回家吗？😏');
+    else if(coach==='小熊') msgs.push('这个月「'+top.name+'」花得最多，¥'+fmt(top.amount)+'。没关系，看见了就是好的开始～');
+    else msgs.push('本月最大支出类别是「'+top.name+'」¥'+fmt(top.amount)+'（占 '+top.pct+'%），可重点关注这一项。');
+  }
+  if(h&&h.regretAmt>0){
+    if(coach==='闺蜜') msgs.push('已经有 ¥'+fmt(h.regretAmt)+' 被你标了「后悔」，钱包在哭，听到了吗？下次手痒先等 10 分钟！');
+    else if(coach==='小熊') msgs.push('有 ¥'+fmt(h.regretAmt)+' 让你有点后悔，不怪你的～我们下次慢一点点就好 🌿');
+    else msgs.push('后悔类消费累计 ¥'+fmt(h.regretAmt)+'。建议对易后悔类目设置 48 小时冷静期。');
+  }
+  if(h&&h.rationalPct!=null) msgs.push((coach==='闺蜜'?'理性占比 ':'当前理性消费占比 ')+h.rationalPct+'%'+(h.rationalPct>=70?('，可以的，'+addrWord(p)+'！'):'，还有提升空间，加油～'));
+  if(msgs.length===0) msgs.push('数据正在积累，多记几笔并评价「真香/后悔」，我的建议会越来越准。');
+  return msgs;
+}
+function coachReply(p,text){
+  const coach=p.coach, h=computeHealth(p);
+  const ca=categoryAgg(p,'current');
+  if(p.transactions.length===0){
+    return coachIntro(p)+'\n\n不过你还没有任何消费记录，先去记几笔吧，我才能基于真实数据帮你分析～';
+  }
+  const total=ca.total, top=ca.arr[0];
+  if(/餐饮|吃|外卖|奶茶|咖啡/.test(text)){
+    const food=ca.arr.find(c=>c.name==='餐饮');
+    if(food) return (coach==='闺蜜'?'查了哦～':'')+'本月餐饮支出 ¥'+fmt(food.amount)+'，占总消费 '+food.pct+'%。'+(coach==='小熊'?'\n\n吃是为了开心，量力而行就好，要不要给奶茶设个每周小额度？':'\n\n建议：给高频小额（奶茶/咖啡）设每周上限，能稳定省下一笔。');
+    return '本月还没有餐饮类的记录哦。';
+  }
+  if(/理性|占比|70|提高|提升/.test(text)){
+    if(h&&h.rationalPct!=null) return '目前理性消费占比 '+h.rationalPct+'%。'+(coach==='闺蜜'?'想冲 70%？冲动消费前先放下手机走两步，亲测有效 💪':'\n\n两个抓手：① 冲动前等 10 分钟；② 购物前对照许愿池目标。坚持一周通常能 +5%。');
+    return '你还没有评价过消费（真香/后悔），先去「评价墙」标记几笔，我就能算出理性占比啦。';
+  }
+  if(/优化|省|建议|哪些/.test(text)){
+    let s=(coach==='闺蜜'?'行，给你扒一扒：\n':coach==='小熊'?'我们一起看看可以轻松一点的地方：\n':'根据你的真实账单，可优化方向：\n');
+    ca.arr.slice(0,3).forEach((c,i)=>{ s+='\n'+(i+1)+'. '+c.name+' ¥'+fmt(c.amount)+'（占 '+c.pct+'%）'; });
+    if(h&&h.regretAmt>0) s+='\n\n其中已标记后悔约 ¥'+fmt(h.regretAmt)+'，是最值得先动的部分。';
+    return s;
+  }
+  // generic
+  let s=(coach==='闺蜜'?'让闺蜜瞅一眼你的账本～\n':coach==='小熊'?'我帮你温柔地总结一下～\n':'为你做个快速概览：\n');
+  s+='\n本月共消费 ¥'+fmt(total)+'，记录 '+p.transactions.filter(t=>sameMonth(t.ts)).length+' 笔';
+  if(top) s+='\n最大类别：'+top.name+'（¥'+fmt(top.amount)+'，'+top.pct+'%）';
+  if(h&&h.rationalPct!=null) s+='\n理性占比：'+h.rationalPct+'%';
+  s+='\n\n想深入了解可以问我：餐饮构成 / 如何提高理性占比 / 哪些消费可优化。';
+  return s;
+}
+
+/* ---------- 真实 AI（DeepSeek / OpenAI 兼容）---------- */
+function genderLabel(g){ return g==='female'?'女':g==='male'?'男':'保密'; }
+function addrWord(p){ return p&&p.gender==='female'?'姐妹':p&&p.gender==='male'?'兄弟':'朋友'; }
+function avatarFor(p){ return p&&p.gender==='female'?'👩':p&&p.gender==='male'?'👨':'🙂'; }
+function aiConfigured(){ const a=Store.data.ai; return !!(a&&a.enabled&&a.apiKey&&a.baseUrl); }
+function aiPersona(coach){
+  if(coach==='闺蜜') return '你是用户的"毒舌好友"消费教练，语气像关系亲密的朋友，直接、犀利又好笑，会调侃但本质是为对方好。';
+  if(coach==='小熊') return '你是用户的"疗愈小熊"消费教练，语气温柔、包容、治愈，先共情再轻轻给建议，不评判。';
+  return '你是用户的"理性财长"消费教练，语气专业、克制、就事论事，用数据说话并给出可执行的平替方案。';
+}
+function aiContext(p){
+  const ca=categoryAgg(p,'current'), hh=computeHealth(p);
+  const monthTxs=p.transactions.filter(t=>sameMonth(t.ts));
+  let s='【用户】昵称：'+p.nickname+'；性别：'+genderLabel(p.gender)+'；每月预算：'+(p.monthlyBudget?('¥'+p.monthlyBudget):'未设置')+'。\n';
+  s+='【本月】支出 ¥'+fmt(monthSpentTotal(p))+'，共 '+monthTxs.length+' 笔。\n';
+  if(ca.arr.length){ s+='【分类占比】'+ca.arr.slice(0,6).map(c=>c.name+' ¥'+fmt(c.amount)+'('+c.pct+'%)').join('，')+'。\n'; }
+  if(hh){ s+='【健康度】'+hh.score+'/100（'+hh.status+'）'+(hh.rationalPct!=null?('，理性占比 '+hh.rationalPct+'%'):'')+'，本月冲动 '+hh.impulseCount+' 次，后悔金额 ¥'+fmt(hh.regretAmt)+'。\n'; }
+  if(p.goals.length){ s+='【攒钱目标】'+p.goals.map(g=>g.name+' '+Math.round(g.current/g.target*100)+'%（¥'+fmt(g.current)+'/¥'+fmt(g.target)+'）').join('，')+'。\n'; }
+  const recent=[...p.transactions].sort((a,b)=>b.ts-a.ts).slice(0,8);
+  if(recent.length){ s+='【最近账单】'+recent.map(t=>t.name+' ¥'+fmt(t.amount)+'/'+t.category+(t.mood==='regret'?'(后悔)':t.mood==='great'?'(真香)':'')).join('；')+'。\n'; }
+  if(p.memories&&p.memories.length){ s+='【已知偏好/记忆】'+p.memories.map(m=>m.text).join('；')+'。\n'; }
+  return s;
+}
+function aiSystemPrompt(p){
+  return aiPersona(p.coach)+'\n用户性别为「'+genderLabel(p.gender)+'」，请使用合适的称呼，不要默认当作女生。请用中文、口语化、简洁回答（一般 2-5 句，必要时分点）。基于下面这位用户的真实记账数据进行分析与建议，不要编造没有的数据：\n\n'+aiContext(p);
+}
+function aiReply(p,history){
+  const a=Store.data.ai;
+  const msgs=[{role:'system',content:aiSystemPrompt(p)}];
+  history.slice(-10).forEach(m=>{ msgs.push({role:m.role==='user'?'user':'assistant',content:m.text}); });
+  const url=a.baseUrl.replace(/\/+$/,'')+'/chat/completions';
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+a.apiKey},
+    body:JSON.stringify({model:a.model||'deepseek-chat',messages:msgs,temperature:0.7,stream:false,max_tokens:600})})
+    .then(r=>{ if(!r.ok) return r.text().then(t=>{throw new Error('HTTP '+r.status+(t?(' '+t.slice(0,80)):''));}); return r.json(); })
+    .then(d=>{ const t=d&&d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content; if(!t) throw new Error('返回为空'); return t.trim(); });
+}
+
+/* ============================================================================
+   ROUTER + GUARD
+============================================================================ */
+const ROUTES={};
+let recTimer=null;
+function currentPath(){ return (location.hash||'#/').slice(1)||'/'; }
+function navigate(path,params){
+  if(path==='/coach'){ UI.chat.messages=null; UI.chat.showMemCard=false; UI.chat.showMemModal=false; UI.chat._draft=''; UI.chat.pendingQ=(params&&params.question)||null; }
+  if(path==='/add'){ UI.add._amtFocused=false; UI.add.receipt=null; UI.add._ocr=false; UI.add.date=''; UI.add.showNewGoal=false; UI.add.newName=''; UI.add.newTarget=''; UI.add.recurring=false; }
+  UI._params=params||{};
+  if(currentPath()===path){ render(); } else { location.hash=path; }
+}
+window.addEventListener('hashchange',()=>{ render(); });
+
+function render(){
+  const scEl=$('#scroller'); const prevTop=scEl?scEl.scrollTop:0;
+  let path=currentPath();
+  const authed=!!Store.data.session;
+  const prof=currentProfile();
+  if(!authed){ if(path!=='/login'&&path!=='/register') path='/login'; }
+  else if(prof&&!prof.onboarded){ path='/onboarding'; }
+  else if(path==='/login'||path==='/register'||path==='/onboarding') path='/';
+  const sameRoute=(path===UI._lastPath);
+  const app=$('#app'); app.innerHTML=''; $('#overlay').innerHTML='';
+  app.className=sameRoute?'no-anim':'';
+  const fn=ROUTES[path]||ROUTES['/'];
+  app.appendChild(fn(UI._params||{}));
+  const NAV_ROUTES={'/':1,'/analysis':1,'/add':1,'/budget':1,'/budget/settings':1,'/review':1,'/profile':1};
+  const nav=$('#nav'); nav.innerHTML='';
+  if(NAV_ROUTES[path]){ nav.style.display='block'; nav.appendChild(bottomNav()); } else { nav.style.display='none'; }
+  if(scEl) scEl.scrollTop = sameRoute ? prevTop : 0;
+  UI._lastPath=path;
+}
+
+/* ---------- per-screen UI state ---------- */
+const UI={
+  _params:{},
+  auth:{showPwd:false},
+  onb:{step:0,nickname:'',gender:null,budget:'',goalName:'',goalTarget:'',goalIcon:'🎯',coach:DEFAULT_COACH},
+  home:{coachIdx:0,billTab:'recent'},
+  add:{mode:'spend',motivation:'悦己充电',type:'餐饮',recurring:false,period:'monthly',amount:'',name:'',savedFrom:'',goalId:null,showNewGoal:false,newIcon:'🎯',newName:'',newTarget:'',recording:false,recSec:0,date:''},
+  analysis:{tab:'category',range:'current',calMode:'day',trendCat:'全部',viewYear:new Date().getFullYear(),viewMonth:new Date().getMonth()+1,detailDay:null,detailCat:'全部'},
+  budget:{goalId:null},
+  bset:{editingMonthly:false,editingId:null,showAdd:false,newIcon:'📦',saved:false},
+  review:{filter:'全部',timeRange:'all',category:'全部'},
+  profile:{},
+  chat:{messages:null,memories:null,typing:false,showMemModal:false,showMemCard:false,memCardMsg:'',toast:false,pendingQ:null,_draft:''},
+};
+
+/* ---------- bottom nav ---------- */
+function bottomNav(){
+  const path=currentPath();
+  const items=[
+    {path:'/',icon:I.home,label:'首页'},
+    {path:'/analysis',icon:I.trend,label:'分析'},
+    {path:'/add',center:true,label:'记账'},
+    {path:'/budget',icon:I.target,label:'许愿'},
+    {path:'/profile',icon:I.user,label:'我的'},
+  ];
+  return h('nav',{class:'nav'},h('div',{class:'nav-inner'},
+    items.map(it=>{
+      const active=path===it.path||(it.path==='/budget'&&path==='/budget/settings');
+      if(it.center){
+        return h('button',{class:'nav-center tap',onclick:()=>navigate('/add')},
+          h('div',{class:'nav-fab'},h('div',{class:'glow'}),h('span',{html:svg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',{color:'#fff',size:26,sw:2.2}),style:{position:'relative',display:'flex'}})),
+          h('span',{class:'lbl',style:{color:'#7C5CFC',fontWeight:700,paddingBottom:'4px'}},it.label));
+      }
+      return h('button',{class:'nav-item tap',onclick:()=>navigate(it.path)},
+        h('div',{style:{position:'relative',display:'flex'}},active?h('div',{class:'nav-pill'}):null,h('span',{html:it.icon({color:active?'#7C5CFC':'#B0B4C8',size:22,sw:active?2.5:2}),style:{position:'relative',display:'flex'}})),
+        h('span',{class:'lbl',style:{color:active?'#7C5CFC':'#B0B4C8',fontWeight:active?700:500}},it.label));
+    })
+  ));
+}
+function emptyState(icon,title,sub,cta){
+  return h('div',{class:'empty card',style:{padding:'40px 24px'}},
+    h('div',{class:'ico'},icon),
+    h('p',{style:{fontSize:'14px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},title),
+    sub?h('p',{style:{fontSize:'12px',color:'#B0B4C8',lineHeight:1.6,marginBottom:cta?'16px':0}},sub):null,
+    cta?h('button',{class:'tap',onclick:cta.onClick,style:{padding:'10px 20px',borderRadius:'999px',fontSize:'13px',fontWeight:700,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',boxShadow:'0 4px 14px rgba(124,92,252,.3)'}},cta.label):null,
+  );
+}
+function donutSVG(data,total,size){
+  size=size||110; const r=41,cx=size/2,cy=size/2,C=2*Math.PI*r,sw=18; let acc=0,rings='';
+  data.forEach(d=>{ const len=total>0?(d.value/total)*C:0; rings+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="${sw}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 ${cx} ${cy})"/>`; acc+=len; });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${rings}</svg>`;
+}
+function openOverlay(node){ const o=$('#overlay'); o.innerHTML=''; if(node) o.appendChild(node); }
+function setInner(id,nodes){ const el=document.getElementById?document.getElementById(id):null; if(!el)return; el.innerHTML=''; (Array.isArray(nodes)?nodes:[nodes]).forEach(n=>{ if(n)el.appendChild(n); }); }
+
+/* ============================================================================
+   SCREEN · LOGIN  (登录)
+============================================================================ */
+function brandHeader(sub){
+  return h('div',{style:{textAlign:'center',marginBottom:'28px'}},
+    h('div',{class:'ib',style:{width:'72px',height:'72px',borderRadius:'22px',fontSize:'38px',margin:'0 auto 16px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)',boxShadow:'0 10px 30px rgba(124,92,252,.4)',animation:'floaty 3s ease-in-out infinite'}},'🌸'),
+    h('h1',{style:{fontSize:'26px',fontWeight:900,color:'#1A1A2E',marginBottom:'6px'}},'MoodLedger'),
+    h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:500}},sub||'记录每一次消费背后的心情'),
+  );
+}
+function pwdField(id,placeholder){
+  return h('div',{style:{position:'relative'}},
+    h('span',{class:'ib',style:{position:'absolute',left:'14px',top:'50%',transform:'translateY(-50%)'},html:I.lock({color:'#B0B4C8',size:18})}),
+    h('input',{id,type:UI.auth.showPwd?'text':'password',placeholder,class:'field',style:{paddingLeft:'42px',paddingRight:'42px'}}),
+    h('button',{class:'ib',onclick:()=>{UI.auth.showPwd=!UI.auth.showPwd;render();},style:{position:'absolute',right:'12px',top:'50%',transform:'translateY(-50%)'},html:I.eye({color:UI.auth.showPwd?'#7C5CFC':'#C8CBD8',size:18})}),
+  );
+}
+function phoneField(id){
+  return h('div',{style:{position:'relative'}},
+    h('span',{class:'ib',style:{position:'absolute',left:'14px',top:'50%',transform:'translateY(-50%)'},html:I.phone({color:'#B0B4C8',size:18})}),
+    h('input',{id,type:'tel',maxlength:'11',inputmode:'numeric',placeholder:'请输入手机号',class:'field',style:{paddingLeft:'42px'}}),
+  );
+}
+const validPhone=(p)=>/^1[3-9]\d{9}$/.test(p);
+
+ROUTES['/login']=function(){
+  const err=UI.auth.error;
+  const submit=()=>{
+    const phone=($('#lg-phone').value||'').trim(), pwd=($('#lg-pwd').value||'').trim();
+    if(!validPhone(phone)){ UI.auth.error='请输入正确的 11 位手机号'; return render(); }
+    const u=Store.data.users[phone];
+    if(!u||u.password!==pwd){ UI.auth.error='手机号或密码错误'; return render(); }
+    UI.auth.error=''; Store.data.session=phone; const _pr=currentProfile(); if(_pr)processRecurrings(_pr); commit();
+  };
+  return h('div',{style:{minHeight:'852px',padding:'90px 28px 40px',background:'linear-gradient(170deg,#EDE8FF 0%,#FFE8F3 45%,#F8F9FE 100%)'}},
+    brandHeader('你好，欢迎回来 👋'),
+    h('div',{class:'anim-up',style:{display:'flex',flexDirection:'column',gap:'14px'}},
+      phoneField('lg-phone'),
+      pwdField('lg-pwd','请输入密码'),
+      err?h('p',{class:'anim-in',style:{fontSize:'12px',color:'#E8527A',paddingLeft:'4px'}},'⚠️ '+err):null,
+      h('button',{class:'tap',onclick:submit,style:{marginTop:'6px',width:'100%',padding:'15px',borderRadius:'14px',fontSize:'16px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',boxShadow:'0 8px 24px rgba(124,92,252,.4)'}},'登 录'),
+      h('div',{class:'row',style:{justifyContent:'center',gap:'4px',marginTop:'8px'}},
+        h('span',{style:{fontSize:'13px',color:'#9B8EC4'}},'还没有账号？'),
+        h('button',{onclick:()=>{UI.auth.error='';navigate('/register');},style:{fontSize:'13px',color:'#7C5CFC',fontWeight:700}},'立即注册'),
+      ),
+    ),
+    h('p',{style:{position:'absolute',bottom:'24px',left:0,right:0,textAlign:'center',fontSize:'11px',color:'#C8CBD8'}},'数据仅保存在本机浏览器 · 注册即同意理性消费 🌿'),
+  );
+};
+
+/* ============================================================================
+   SCREEN · REGISTER  (注册)
+============================================================================ */
+ROUTES['/register']=function(){
+  const err=UI.auth.error;
+  const submit=()=>{
+    const phone=($('#rg-phone').value||'').trim(), pwd=($('#rg-pwd').value||'').trim(), pwd2=($('#rg-pwd2').value||'').trim();
+    if(!validPhone(phone)){ UI.auth.error='请输入正确的 11 位手机号'; return render(); }
+    if(pwd.length<4){ UI.auth.error='密码至少 4 位'; return render(); }
+    if(pwd!==pwd2){ UI.auth.error='两次输入的密码不一致'; return render(); }
+    if(Store.data.users[phone]){ UI.auth.error='该手机号已注册，请直接登录'; return render(); }
+    UI.auth.error='';
+    const uid=nextUserId();
+    Store.data.users[phone]={phone,id:uid,password:pwd,createdAt:Date.now()};
+    const prof=newProfile(phone,''); prof.id=uid;
+    Store.data.profiles[phone]=prof;
+    Store.data.session=phone;
+    UI.onb={step:0,nickname:'',gender:null,budget:'',goalName:'',goalTarget:'',goalIcon:'🎯',coach:DEFAULT_COACH};
+    commit();
+  };
+  return h('div',{style:{minHeight:'852px',padding:'80px 28px 40px',background:'linear-gradient(170deg,#EDE8FF 0%,#FFE8F3 45%,#F8F9FE 100%)'}},
+    brandHeader('创建账号，开启理性消费之旅 ✨'),
+    h('div',{class:'anim-up',style:{display:'flex',flexDirection:'column',gap:'14px'}},
+      phoneField('rg-phone'),
+      pwdField('rg-pwd','设置密码（至少 4 位）'),
+      h('div',{style:{position:'relative'}},
+        h('span',{class:'ib',style:{position:'absolute',left:'14px',top:'50%',transform:'translateY(-50%)'},html:I.lock({color:'#B0B4C8',size:18})}),
+        h('input',{id:'rg-pwd2',type:UI.auth.showPwd?'text':'password',placeholder:'再次输入密码',class:'field',style:{paddingLeft:'42px'}}),
+      ),
+      err?h('p',{class:'anim-in',style:{fontSize:'12px',color:'#E8527A',paddingLeft:'4px'}},'⚠️ '+err):null,
+      h('button',{class:'tap',onclick:submit,style:{marginTop:'6px',width:'100%',padding:'15px',borderRadius:'14px',fontSize:'16px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#FF6B9D,#FF8FB4)',boxShadow:'0 8px 24px rgba(255,107,157,.4)'}},'注 册'),
+      h('div',{class:'row',style:{justifyContent:'center',gap:'4px',marginTop:'8px'}},
+        h('span',{style:{fontSize:'13px',color:'#9B8EC4'}},'已有账号？'),
+        h('button',{onclick:()=>{UI.auth.error='';navigate('/login');},style:{fontSize:'13px',color:'#7C5CFC',fontWeight:700}},'去登录'),
+      ),
+    ),
+  );
+};
+
+/* ============================================================================
+   SCREEN · ONBOARDING  (引导填资料)
+============================================================================ */
+function makeOnboardingGoal(name,targetRaw,icon){
+  const gname=(name||'').trim();
+  const gt=parseInt((targetRaw==null?'':targetRaw).toString().replace(/[^0-9]/g,''))||0;
+  if(!gname&&gt<=0) return null; // 名称与金额都没填才不创建
+  return {id:'g'+Date.now(),name:gname||'我的心愿',icon:icon||'🎯',target:gt>0?gt:1000,current:0,color:GOAL_COLORS[0],createdAt:Date.now()};
+}
+ROUTES['/onboarding']=function(){
+  const o=UI.onb, prof=currentProfile();
+  const steps=[
+    {key:'nickname',title:'怎么称呼你？',sub:'给自己起个昵称吧，必填',emoji:'😊'},
+    {key:'budget',title:'设置每月预算',sub:'帮你守住钱包的红线 · 可跳过',emoji:'💰'},
+    {key:'goal',title:'许下一个小目标',sub:'攒钱买点想要的 · 可跳过',emoji:'🎯'},
+    {key:'coach',title:'选择你的消费陪练',sub:'不选默认「理性财长」',emoji:'🤖'},
+  ];
+  const cur=steps[o.step];
+
+  const saveStepValues=()=>{
+    if(o.step===0){ const v=$('#ob-nick'); if(v)o.nickname=v.value.trim(); }
+    if(o.step===1){ const v=$('#ob-budget'); if(v)o.budget=v.value.trim(); }
+    if(o.step===2){ const n=$('#ob-gname'),t=$('#ob-gtarget'); if(n)o.goalName=n.value.trim(); if(t)o.goalTarget=t.value.trim(); }
+  };
+  const next=()=>{
+    saveStepValues();
+    if(o.step===0&&!o.nickname){ return render(); } // nickname required (button disabled anyway)
+    if(o.step<steps.length-1){ o.step++; return render(); }
+    finish();
+  };
+  const back=()=>{ saveStepValues(); if(o.step>0){o.step--;render();} };
+  const skip=()=>{ saveStepValues(); if(o.step<steps.length-1){o.step++;render();} };
+  const finish=()=>{
+    saveStepValues();
+    prof.nickname=o.nickname||'我';
+    prof.gender=o.gender||null;
+    prof.coach=o.coach||DEFAULT_COACH;
+    const b=parseInt((o.budget||'').replace(/,/g,'')); prof.monthlyBudget=(!isNaN(b)&&b>0)?b:null;
+    const g=makeOnboardingGoal(o.goalName,o.goalTarget,o.goalIcon);
+    if(g) prof.goals.push(g);
+    prof.onboarded=true; commit();
+  };
+
+  const dots=h('div',{class:'row',style:{justifyContent:'center',gap:'6px',marginBottom:'26px'}},
+    steps.map((_,i)=>h('div',{style:{height:'6px',borderRadius:'999px',transition:'.3s',width:i===o.step?'22px':'6px',background:i<=o.step?'#7C5CFC':'#E2E4EF'}})));
+
+  let body;
+  if(o.step===0){
+    body=h('div',{},
+      h('input',{id:'ob-nick',value:o.nickname,placeholder:'例如：小美 / 攒钱小能手',class:'field',style:{textAlign:'center',fontSize:'18px',marginBottom:'18px'},oninput:(e)=>{o.nickname=e.target.value;const b=$('#ob-next');if(b){const ok=!!e.target.value.trim();b.style.opacity=ok?1:.45;b.style.pointerEvents=ok?'auto':'none';}}}),
+      h('p',{style:{fontSize:'12px',color:'#9B8EC4',fontWeight:600,marginBottom:'8px',textAlign:'center'}},'性别（用于合适的称呼，可选）'),
+      h('div',{class:'row',style:{justifyContent:'center',gap:'10px'}},[{v:'female',l:'👩 女'},{v:'male',l:'👨 男'},{v:'secret',l:'🙂 保密'}].map(g=>h('button',{class:'tap',onclick:()=>{o.gender=g.v;render();},style:{padding:'10px 16px',borderRadius:'999px',fontSize:'14px',fontWeight:700,background:o.gender===g.v?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F0ECFF',color:o.gender===g.v?'#fff':'#7C5CFC',boxShadow:o.gender===g.v?'0 4px 12px rgba(124,92,252,.3)':'none'}},g.l))),
+    );
+  } else if(o.step===1){
+    body=h('div',{},
+      h('div',{class:'row',style:{justifyContent:'center',alignItems:'baseline',gap:'6px',marginBottom:'8px'}},h('span',{style:{fontSize:'24px',color:'#9B8EC4'}},'¥'),h('input',{id:'ob-budget',value:o.budget,type:'number',inputmode:'numeric',placeholder:'5000',style:{width:'170px',fontSize:'40px',fontWeight:900,textAlign:'center',border:'none',borderBottom:'2px solid rgba(124,92,252,.25)',outline:'none',background:'transparent',color:'#1A1A2E',fontFamily:"'Plus Jakarta Sans',sans-serif"}})),
+      h('p',{style:{textAlign:'center',fontSize:'12px',color:'#B0B4C8',marginTop:'10px'}},'之后可在「预算设置」里随时修改'),
+      h('div',{class:'row',style:{justifyContent:'center',gap:'8px',marginTop:'16px',flexWrap:'wrap'}},[3000,5000,8000,10000].map(v=>h('button',{class:'tap',onclick:()=>{o.budget=String(v);render();},style:{padding:'6px 14px',borderRadius:'999px',fontSize:'12px',fontWeight:700,background:o.budget===String(v)?'#7C5CFC':'#F0ECFF',color:o.budget===String(v)?'#fff':'#7C5CFC'}},'¥'+fmt(v)))),
+    );
+  } else if(o.step===2){
+    body=h('div',{},
+      h('p',{style:{fontSize:'12px',color:'#9B8EC4',marginBottom:'8px',fontWeight:600}},'选个图标'),
+      h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'16px'}},GOAL_ICONS.map(ic=>h('button',{class:'ib tap',onclick:()=>{o.goalIcon=ic;render();},style:{width:'42px',height:'42px',borderRadius:'12px',fontSize:'20px',background:o.goalIcon===ic?'rgba(124,92,252,.12)':'#F4F5FB',border:'1.5px solid '+(o.goalIcon===ic?'#7C5CFC':'transparent')}},ic))),
+      h('input',{id:'ob-gname',value:o.goalName,placeholder:'目标名称（如 iPad Pro）',class:'field',style:{marginBottom:'12px'},oninput:(e)=>{o.goalName=e.target.value;}}),
+      h('div',{class:'row',style:{gap:'8px'}},h('span',{style:{fontSize:'14px',color:'#9B8EC4',whiteSpace:'nowrap'}},'目标金额 ¥'),h('input',{id:'ob-gtarget',value:o.goalTarget,type:'number',inputmode:'numeric',placeholder:'7000',class:'field',oninput:(e)=>{o.goalTarget=e.target.value;}})),
+    );
+  } else {
+    body=h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},
+      COACH_ORDER.map(id=>{const c=COACHES[id],active=o.coach===id;return h('button',{class:'tap',onclick:()=>{o.coach=id;render();},style:{textAlign:'left',padding:'16px',borderRadius:'16px',background:c.bg,border:'2.5px solid '+(active?c.borderColor:'transparent'),boxShadow:active?('0 6px 18px '+c.borderColor+'33'):'none'}},
+        h('div',{class:'between',style:{marginBottom:'6px'}},h('p',{style:{fontSize:'15px',fontWeight:800,color:c.textColor}},c.name),active?h('span',{class:'ib',style:{width:'22px',height:'22px',borderRadius:'50%',background:c.borderColor},html:I.check({color:'#fff',size:13})}):(id===DEFAULT_COACH?h('span',{style:{fontSize:'9px',padding:'2px 8px',borderRadius:'999px',background:'rgba(0,0,0,.06)',color:c.textColor,fontWeight:700}},'默认'):null)),
+        h('p',{style:{fontSize:'12px',color:'#6B7280',marginBottom:'8px'}},c.desc),
+        h('div',{style:{borderRadius:'10px',padding:'6px 10px',background:'rgba(255,255,255,.7)'}},h('p',{style:{fontSize:'12px',fontStyle:'italic',color:'#4A4A6A'}},c.preview)),
+      );}),
+    );
+  }
+  const nickReady=o.step!==0||!!o.nickname;
+  const isLast=o.step===steps.length-1;
+
+  return h('div',{style:{minHeight:'852px',padding:'70px 28px 40px',display:'flex',flexDirection:'column',background:'linear-gradient(170deg,#EDE8FF 0%,#FFE8F3 50%,#F8F9FE 100%)'}},
+    h('div',{class:'between',style:{marginBottom:'8px',height:'28px'}},
+      o.step>0?h('button',{class:'ib tap',onclick:back,style:{width:'32px',height:'32px',borderRadius:'50%',background:'rgba(255,255,255,.7)'},html:I.back({color:'#7C5CFC',size:16})}):h('div',{style:{width:'32px'}}),
+      h('span',{style:{fontSize:'12px',color:'#9B8EC4',fontWeight:600}},'第 '+(o.step+1)+' / '+steps.length+' 步'),
+      (!isLast&&o.step!==0)?h('button',{onclick:skip,style:{fontSize:'13px',color:'#9B8EC4',fontWeight:600}},'跳过'):h('div',{style:{width:'32px'}}),
+    ),
+    dots,
+    h('div',{class:'anim-up',key:o.step,style:{flex:1}},
+      h('div',{class:'ib',style:{width:'64px',height:'64px',borderRadius:'20px',fontSize:'34px',margin:'0 auto 16px',background:'#fff',boxShadow:'0 6px 18px rgba(124,92,252,.15)'}},cur.emoji),
+      h('h1',{style:{fontSize:'22px',fontWeight:900,color:'#1A1A2E',textAlign:'center',marginBottom:'6px'}},cur.title),
+      h('p',{style:{fontSize:'13px',color:'#7B6FAE',textAlign:'center',marginBottom:'28px'}},cur.sub),
+      body,
+    ),
+    h('button',{id:'ob-next',class:'tap',onclick:next,style:{width:'100%',padding:'15px',borderRadius:'14px',fontSize:'16px',fontWeight:800,color:'#fff',marginTop:'20px',opacity:nickReady?1:.45,pointerEvents:nickReady?'auto':'none',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',boxShadow:'0 8px 24px rgba(124,92,252,.4)'}},isLast?'完成，开始记账 🎉':'下一步'),
+  );
+};
+
+/* ============================================================================
+   SCREEN · HOME  (首页 · 真实数据)
+============================================================================ */
+const HOME_PILLS=['帮我分析本月餐饮支出构成','如何把理性消费占比提高到 70%','哪些消费可以优化？'];
+ROUTES['/']=function(){
+  const p=currentProfile(), s=UI.home, coach=COACHES[p.coach]||COACHES[DEFAULT_COACH];
+  const now=new Date();
+  const dateStr=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 · 周'+WK[now.getDay()];
+  const msgs=homeCoachMessages(p);
+  if(s.coachIdx>=msgs.length) s.coachIdx=0;
+  const spent=monthSpentTotal(p), budget=p.monthlyBudget;
+  const pct=budget?Math.min(Math.round((spent/budget)*100),100):0;
+  const recent=recentTxs(p,3);
+  const health=computeHealth(p,recent);
+  const allTx=[...recent].sort((a,b)=>b.ts-a.ts);
+  const tx=s.billTab==='top'?[...recent].sort((a,b)=>b.amount-a.amount).slice(0,5):allTx.slice(0,5);
+  const circ=2*Math.PI*28;
+
+  const refresh=(e)=>{ const ic=e.currentTarget.querySelector('span'); if(ic){ic.style.transition='transform .48s';ic.style.transform='rotate(360deg)';} setTimeout(()=>{s.coachIdx=(s.coachIdx+1)%msgs.length;render();},300); };
+
+  return h('div',{class:'page'},
+    h('div',{class:'px5 head-grad',style:{paddingTop:'58px',paddingBottom:'20px'}},
+      h('div',{style:{marginBottom:'16px'}},
+        h('p',{style:{fontSize:'12px',color:'#9B8EC4',fontWeight:600,marginBottom:'2px'}},dateStr),
+        h('h1',{style:{fontSize:'24px',color:'#1A1A2E',fontWeight:900,marginBottom:'2px'}},'Hi，'+p.nickname+' 👋'),
+        h('p',{style:{fontSize:'14px',color:'#7B6FAE',fontWeight:500}},'今天也要理性消费，钱包和心情都要照顾好 ✨'),
+      ),
+      h('div',{class:'anim-up d1',style:{borderRadius:'16px',padding:'16px',background:'rgba(255,255,255,.82)',backdropFilter:'blur(14px)',boxShadow:'0 4px 20px rgba(124,92,252,.12)'}},
+        h('div',{class:'between',style:{marginBottom:'12px'}},
+          h('div',{class:'row',style:{gap:'10px'}},
+            h('div',{class:'ib',style:{width:'36px',height:'36px',borderRadius:'12px',fontSize:'18px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)',boxShadow:'0 4px 12px rgba(124,92,252,.35)'}},'🤖'),
+            h('div',{},h('p',{style:{fontSize:'12px',color:'#1A1A2E',fontWeight:800,lineHeight:1,marginBottom:'2px'}},'AI 消费教练'),h('p',{style:{fontSize:'10px',color:'#B0B4C8'}},coach.tag+' · 刚刚分析完')),
+          ),
+          h('div',{class:'row',style:{gap:'8px'}},
+            h('div',{class:'row',style:{gap:'4px'}},msgs.map((_,i)=>h('button',{onclick:()=>{s.coachIdx=i;render();},style:{width:s.coachIdx===i?'14px':'6px',height:'6px',borderRadius:'999px',background:s.coachIdx===i?'#7C5CFC':'#E2E4EF',transition:'.2s'}}))),
+            h('button',{class:'ib',onclick:refresh,style:{width:'24px',height:'24px',borderRadius:'50%',background:'#F0ECFF'}},h('span',{class:'ib',html:I.refresh({color:'#7C5CFC',size:12})})),
+            h('button',{class:'pill tap',onclick:()=>navigate('/coach'),style:{padding:'6px 10px',fontSize:'11px',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',color:'#fff',fontWeight:700,boxShadow:'0 3px 10px rgba(124,92,252,.25)'}},h('span',{class:'ib',html:I.chat({color:'#fff',size:12})}),'对话'),
+          ),
+        ),
+        h('div',{class:'anim-x',key:s.coachIdx,style:{borderRadius:'12px',borderTopLeftRadius:'4px',padding:'12px 14px',fontSize:'12px',lineHeight:1.6,marginBottom:'12px',background:'#F4F5FB',color:'#3D3D5C',border:'1px solid rgba(124,92,252,.07)'}},msgs[s.coachIdx]),
+        h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'2px'}},HOME_PILLS.map(pl=>h('button',{class:'pill tap',onclick:()=>navigate('/coach',{question:pl}),style:{flexShrink:0,padding:'6px 12px',fontSize:'11px',background:'rgba(124,92,252,.08)',color:'#7C5CFC',fontWeight:600,border:'1px solid rgba(124,92,252,.12)',whiteSpace:'nowrap'}},pl,h('span',{class:'ib',html:I.chevR({color:'#7C5CFC',size:12})})))),
+      ),
+    ),
+
+    h('div',{class:'px5',style:{marginTop:'16px',display:'flex',flexDirection:'column',gap:'16px'}},
+      /* energy slot */
+      h('div',{class:'card anim-up d2',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:'12px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'本月收支能量槽'),h('button',{class:'pill',onclick:()=>navigate('/analysis'),style:{fontSize:'12px',color:'#9B8EC4'}},'详情',h('span',{class:'ib',html:I.chevR({color:'#9B8EC4',size:14})}))),
+        budget?h('div',{},
+          h('div',{style:{display:'flex',alignItems:'baseline',gap:'6px',marginBottom:'4px'}},h('span',{style:{fontSize:'28px',color:'#1A1A2E',fontWeight:900}},'¥'+fmt(spent)),h('span',{style:{fontSize:'14px',color:'#9B8EC4'}},'/ ¥'+fmt(budget))),
+          h('div',{style:{position:'relative',height:'16px',borderRadius:'999px',overflow:'hidden',marginBottom:'8px',background:'#EEF0F8'}},h('div',{style:{position:'absolute',inset:'0 auto 0 0',height:'100%',width:pct+'%',borderRadius:'999px',background:pct>90?'linear-gradient(90deg,#FFB347,#FF6B6B)':'linear-gradient(90deg,#7FC8A9 0%,#FFB347 80%,#FF6B6B 100%)',animation:'grow-w .8s ease both'}})),
+          h('p',{style:{fontSize:'12px',color:'#9B8EC4'},html:'已消耗预算 <b style="color:#7C5CFC">'+pct+'%</b> · 剩余可花 ¥'+fmt(Math.max(budget-spent,0))}),
+        ):h('button',{onclick:()=>navigate('/budget/settings'),style:{width:'100%',textAlign:'left'}},
+          h('div',{style:{display:'flex',alignItems:'baseline',gap:'6px',marginBottom:'8px'}},h('span',{style:{fontSize:'28px',color:'#1A1A2E',fontWeight:900}},'¥'+fmt(spent)),h('span',{style:{fontSize:'13px',color:'#9B8EC4'}},'本月已支出')),
+          h('div',{class:'row',style:{gap:'6px',padding:'10px 12px',borderRadius:'12px',background:'rgba(124,92,252,.06)',border:'1px dashed rgba(124,92,252,.3)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),h('span',{style:{fontSize:'12px',color:'#7C5CFC',fontWeight:700}},'还没设置每月预算，点此设置 →')),
+        ),
+      ),
+
+      /* health */
+      h('div',{class:'card anim-up d3',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:health?'16px':'0'}},
+          h('div',{class:'row',style:{gap:'8px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'AI 消费健康度'),h('span',{style:{fontSize:'10px',padding:'2px 8px',borderRadius:'999px',background:'rgba(124,92,252,.1)',color:'#7C5CFC',fontWeight:700}},'近3个月')),
+          health?h('div',{style:{display:'flex',alignItems:'baseline',gap:'2px'}},h('span',{style:{fontSize:'24px',color:'#7C5CFC',fontWeight:900}},health.score),h('span',{style:{fontSize:'12px',color:'#B0B4C8'}},'/100')):null,
+        ),
+        health?h('div',{},
+          h('div',{style:{display:'flex',alignItems:'flex-start',gap:'16px',marginBottom:'16px'}},
+            h('div',{style:{flexShrink:0,position:'relative',width:'68px',height:'68px'},html:`<svg viewBox="0 0 72 72" width="68" height="68"><circle cx="36" cy="36" r="28" fill="none" stroke="#EEF0F8" stroke-width="7"/><circle cx="36" cy="36" r="28" fill="none" stroke="url(#hg)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-health.score/100)}" transform="rotate(-90 36 36)"/><defs><linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7C5CFC"/><stop offset="100%" stop-color="#FF6B9D"/></linearGradient></defs></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px">${health.face}</div>`}),
+            h('div',{class:'grow'},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700,marginBottom:'4px'}},'消费状态：'+health.status),h('p',{style:{fontSize:'12px',lineHeight:1.6,color:'#7B6FAE'},html:'本月冲动消费 <b style="color:#FF6B9D">'+health.impulseCount+' 次</b>'+(health.rationalPct!=null?('，理性占比 <b style="color:#4ECDC4">'+health.rationalPct+'%</b>'):'')+'。多评价「真香/后悔」，分析会更准。'})),
+          ),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},health.dims.map(d=>h('div',{},
+            h('div',{class:'between',style:{marginBottom:'4px'}},h('div',{class:'row',style:{gap:'6px',minWidth:0}},h('span',{style:{fontSize:'14px',flexShrink:0}},d.icon),h('span',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700,flexShrink:0}},d.label),h('span',{class:'trunc',style:{fontSize:'10px',color:'#C8CBD8'}},d.desc)),h('span',{style:{fontSize:'11px',color:d.color,fontWeight:700,flexShrink:0,marginLeft:'8px'}},d.score+(d.max===100?'%':'/'+d.max))),
+            h('div',{style:{height:'6px',borderRadius:'999px',overflow:'hidden',background:'#EEF0F8'}},h('div',{style:{height:'100%',borderRadius:'999px',width:((d.score/d.max)*100)+'%',background:d.color,animation:'grow-w .7s ease both'}})),
+          ))),
+        ):h('div',{style:{textAlign:'center',padding:'20px 8px'}},h('p',{style:{fontSize:'34px',marginBottom:'8px'}},'🌱'),h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},'还没有消费数据'),h('p',{style:{fontSize:'12px',color:'#B0B4C8',lineHeight:1.6}},'记录并评价几笔消费后，这里会生成你的消费健康度分析')),
+      ),
+
+      /* bills */
+      h('div',{class:'card anim-up d4',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:'4px'}},h('div',{class:'row',style:{gap:'8px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'账单'),h('span',{style:{fontSize:'10px',padding:'2px 8px',borderRadius:'999px',background:'rgba(124,92,252,.1)',color:'#7C5CFC',fontWeight:700}},'近3个月')),recent.length>0?h('button',{class:'pill',onclick:()=>navigate('/review'),style:{fontSize:'12px',color:'#7C5CFC',fontWeight:600}},'评价账单',h('span',{class:'ib',html:I.chevR({color:'#7C5CFC',size:14})})):null),
+        recent.length===0?h('div',{style:{textAlign:'center',padding:'24px 8px'}},h('p',{style:{fontSize:'34px',marginBottom:'8px'}},'🧾'),h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'12px'}},'近3个月还没有账单'),h('button',{class:'tap',onclick:()=>navigate('/add'),style:{padding:'8px 18px',borderRadius:'999px',fontSize:'12px',fontWeight:700,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'记下一笔 →')):h('div',{},
+          h('div',{class:'seg',style:{margin:'8px 0 12px'}},[{id:'recent',label:'最近账单'},{id:'top',label:'金额 TOP'}].map(t=>h('button',{class:s.billTab===t.id?'on':'',onclick:()=>{s.billTab=t.id;render();}},t.label))),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},tx.map((it,i)=>{const meta=catMeta(it.category);const regret=it.mood==='regret';return h('div',{class:'anim-x row tap',onclick:()=>openOverlay(openTxEdit(it.id)),style:{gap:'12px',cursor:'pointer',borderRadius:'12px',padding:'12px 14px',background:'#F8F9FE',borderLeft:'3px solid '+(regret?'#FF6B9D':it.mood==='great'?'#4ECDC4':'#E2E4EF'),animationDelay:(i*0.05)+'s'}},
+            s.billTab==='top'?h('span',{style:{fontSize:'12px',width:'16px',textAlign:'center',flexShrink:0,color:i<3?'#7C5CFC':'#B0B4C8',fontWeight:800}},i+1):null,
+            h('div',{class:'ib',style:{width:'40px',height:'40px',borderRadius:'12px',fontSize:'20px',flexShrink:0,background:'#fff',boxShadow:'0 2px 6px rgba(0,0,0,.06)'}},it.catIcon||meta.icon),
+            h('div',{class:'grow',style:{minWidth:0}},
+              h('div',{class:'between',style:{gap:'8px',marginBottom:'2px'}},
+                h('p',{class:'trunc',style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},'¥'+fmt(it.amount)+' · '+it.name),
+                h('div',{class:'row',style:{gap:'4px',flexShrink:0}},
+                  it.recurring?h('span',{class:'ib',style:{fontSize:'9px',padding:'2px 6px',borderRadius:'999px',fontWeight:700,gap:'2px',background:'rgba(124,92,252,.1)',color:'#7C5CFC'}},'↻ 定期'):null,
+                  it.mood?h('span',{style:{fontSize:'11px'}},it.mood==='great'?'😊':'😰'):null,
+                ),
+              ),
+              h('p',{class:'trunc',style:{fontSize:'11px',color:'#9B8EC4'}},(it.catIcon||meta.icon)+' '+(it.category||'其他')+' · '+dateLabel(it.ts)+(it.receipt?' · 📎':'')),
+            ),
+          );})),
+        ),
+      ),
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · ADD RECORD  (记账 · 真实写入)
+============================================================================ */
+ROUTES['/add']=function(params){
+  const p=currentProfile(), s=UI.add;
+  if(params&&params.mode) s.mode=params.mode;
+  if(s.goalId===null&&p.goals.length) s.goalId=p.goals[0].id;
+  const goal=p.goals.find(g=>g.id===s.goalId)||null;
+  const disp=s.amount||'0';
+  const pctBoost=(goal&&s.amount)?((parseFloat(s.amount)/goal.target)*100).toFixed(1):null;
+
+  const saveSpend=()=>{
+    const amt=parseFloat(s.amount); if(!amt||amt<=0){ showToast('请输入金额'); return; }
+    const meta=catMeta(s.type);
+    const nameEl=$('#ar-name'); const name=(nameEl&&nameEl.value.trim())||s.type;
+    const ts=inputToTs(s.date,Date.now());
+    const tx={id:'t'+Date.now(),type:'spend',name,amount:amt,category:s.type,catIcon:meta.icon,catColor:meta.color,motivation:s.motivation,mood:null,recurring:!!s.recurring,period:s.recurring?s.period:null,receipt:s.receipt||null,ts};
+    if(s.recurring){ const rid='r'+Date.now(); tx.ruleId=rid; p.recurrings=p.recurrings||[]; p.recurrings.push({id:rid,name,amount:amt,category:s.type,motivation:s.motivation,period:s.period,lastRun:ts,nextRun:advancePeriod(ts,s.period),active:true,createdAt:Date.now()}); }
+    p.transactions.push(tx);
+    const wasRec=s.recurring;
+    s.amount='';s.name='';s.receipt=null;s.date='';s.recurring=false;
+    Store.save(); navigate('/'); showToast(wasRec?'已记下并设为定期扣除 ✓':'已记下这一笔 ✓');
+  };
+  const saveSave=()=>{
+    const amt=parseFloat(s.amount); if(!amt||amt<=0){ showToast('请输入金额'); return; }
+    if(!goal){ showToast('请先选择或新增一个目标'); s.showNewGoal=true; render(); return; }
+    const sf=($('#ar-savedfrom')?$('#ar-savedfrom').value.trim():'')||'克制了一笔冲动';
+    goal.current+=amt;
+    p.contributions.push({id:'c'+Date.now(),goalId:goal.id,amount:amt,note:sf,icon:goal.icon,date:dateLabel(Date.now()),ts:Date.now()});
+    s.amount='';s.savedFrom='';
+    UI.budget.goalId=goal.id;
+    Store.save(); navigate('/budget'); showToast('为目标添了一把火 🔥');
+  };
+
+  /* chip 局部更新（不重建金额输入框，键盘不收起） */
+  const typeChips=()=>allTypes(p).map(t=>{const meta=catMeta(t);return h('button',{class:'pill tap',onclick:()=>{s.type=t;setInner('ar-types',typeChips());},style:{flexShrink:0,gap:'6px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:s.type===t?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.type===t?'#fff':'#6B7280',boxShadow:s.type===t?'0 3px 10px rgba(124,92,252,.28)':'none'}},h('span',{},meta.icon),h('span',{},t));}).concat([h('button',{class:'pill tap',onclick:()=>openOverlay(openAddCategory((nm)=>{UI.add.type=nm;render();})),style:{flexShrink:0,gap:'4px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),'新增'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageCategories()),style:{flexShrink:0,gap:'4px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:13})}),'编辑')]);
+  const motivChips=()=>allMotivs(p).map(m=>h('button',{class:'pill tap',onclick:()=>{s.motivation=m.id;setInner('ar-motivs',motivChips());},style:{flexShrink:0,gap:'6px',padding:'10px 16px',fontSize:'14px',fontWeight:700,whiteSpace:'nowrap',background:s.motivation===m.id?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.motivation===m.id?'#fff':'#6B7280',boxShadow:s.motivation===m.id?'0 4px 14px rgba(124,92,252,.3)':'none'}},h('span',{},m.emoji),h('span',{},m.id))).concat([h('button',{class:'pill tap',onclick:()=>openOverlay(openAddMotiv((nm)=>{UI.add.motivation=nm;render();})),style:{flexShrink:0,gap:'4px',padding:'10px 14px',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),'新增'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageMotivations()),style:{flexShrink:0,gap:'4px',padding:'10px 14px',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:13})}),'编辑')]);
+  const recurInner=()=>[
+    h('div',{class:'between'},h('div',{},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},'是否定期扣除'),h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'如房租、订阅等周期性支出')),h('button',{class:'switch',onclick:()=>{s.recurring=!s.recurring;setInner('ar-recur',recurInner());},style:{background:s.recurring?'#7C5CFC':'#E2E4EF'}},h('div',{class:'knob',style:{transform:'translateX('+(s.recurring?'24px':'2px')+')'}}))),
+    s.recurring?h('div',{style:{overflow:'hidden'}},h('p',{style:{fontSize:'12px',marginTop:'12px',marginBottom:'8px',color:'#7B6FAE',fontWeight:600}},'扣除周期'),h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap'}},RECURRING.map(opt=>h('button',{class:'tap',onclick:()=>{s.period=opt.id;setInner('ar-recur',recurInner());},style:{padding:'6px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,background:s.period===opt.id?'#7C5CFC':'#F4F5FB',color:s.period===opt.id?'#fff':'#6B7280'}},opt.label)))):null,
+  ];
+  const repaintGoals=()=>setInner('ar-goals',goalInner());
+  const goalInner=()=>{
+    const goalNow=p.goals.find(g=>g.id===s.goalId)||null;
+    const boost=(goalNow&&s.amount)?((parseFloat(s.amount)/goalNow.target)*100).toFixed(1):null;
+    return [
+      p.goals.length===0?h('p',{style:{fontSize:'12px',color:'#B0B4C8',marginBottom:'12px',textAlign:'center',padding:'8px'}},'还没有目标，先新增一个吧 👇'):h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}},p.goals.map(g=>{const gp=Math.round((g.current/g.target)*100),active=s.goalId===g.id;return h('button',{class:'tap',onclick:()=>{s.goalId=g.id;repaintGoals();},style:{width:'100%',display:'flex',alignItems:'center',gap:'12px',padding:'12px',borderRadius:'12px',textAlign:'left',background:active?'rgba(124,92,252,.06)':'#F8F9FE',border:'1.5px solid '+(active?'#7C5CFC':'transparent')}},h('span',{style:{fontSize:'24px'}},g.icon),h('div',{class:'grow'},h('div',{class:'between',style:{marginBottom:'4px'}},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},g.name),h('p',{style:{fontSize:'12px',color:active?'#7C5CFC':'#9B8EC4',fontWeight:700}},gp+'%')),h('div',{style:{height:'6px',borderRadius:'999px',overflow:'hidden',background:'#E8EAF4'}},h('div',{style:{height:'100%',borderRadius:'999px',width:gp+'%',background:active?g.color:'#C8CBD8'}}))),active?h('span',{class:'ib',style:{width:'20px',height:'20px',borderRadius:'50%',background:'#7C5CFC',flexShrink:0},html:I.check({color:'#fff',size:12})}):null);})),
+      h('button',{class:'ib',onclick:()=>{s.showNewGoal=true;repaintGoals();},style:{marginTop:'8px',width:'100%',gap:'8px',padding:'12px',borderRadius:'12px',fontSize:'14px',border:'1.5px dashed rgba(124,92,252,.3)',color:'#7C5CFC',fontWeight:700,background:'rgba(124,92,252,.03)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:16})}),'新增目标'),
+      s.showNewGoal?h('div',{style:{marginTop:'12px',padding:'16px',borderRadius:'12px',background:'#F8F9FE',border:'1px solid rgba(124,92,252,.1)'}},
+        h('div',{class:'between',style:{marginBottom:'12px'}},h('p',{style:{fontSize:'12px',color:'#7C5CFC',fontWeight:800}},'新增目标'),h('button',{class:'ib',onclick:()=>{s.showNewGoal=false;repaintGoals();},html:I.x({color:'#B0B4C8',size:16})})),
+        h('div',{class:'row',style:{gap:'6px',flexWrap:'wrap',marginBottom:'8px'}},GOAL_ICONS.slice(0,8).map(ic=>h('button',{class:'ib tap',onclick:()=>{s.newIcon=ic;repaintGoals();},style:{width:'34px',height:'34px',borderRadius:'10px',fontSize:'17px',background:s.newIcon===ic?'rgba(124,92,252,.12)':'#fff',border:'1.5px solid '+(s.newIcon===ic?'#7C5CFC':'rgba(124,92,252,.12)')}},ic))),
+        h('input',{value:s.newName,placeholder:'目标名称',class:'field',style:{marginBottom:'8px',fontSize:'14px',padding:'10px 12px'},oninput:(e)=>{s.newName=e.target.value;}}),
+        h('div',{class:'row',style:{gap:'8px',marginBottom:'8px'}},h('span',{style:{fontSize:'12px',color:'#9B8EC4',whiteSpace:'nowrap'}},'目标金额 ¥'),h('input',{value:s.newTarget,type:'number',placeholder:'5000',class:'field',style:{fontSize:'14px',padding:'10px 12px'},oninput:(e)=>{s.newTarget=e.target.value;}})),
+        h('button',{onclick:()=>{const nm=(s.newName||'').trim(),tg=s.newTarget;if(!nm||!tg){showToast('请填写名称和金额');return;}const g={id:'g'+Date.now(),name:nm,icon:s.newIcon||'🎯',current:0,target:parseInt(tg)||1000,color:GOAL_COLORS[p.goals.length%GOAL_COLORS.length],createdAt:Date.now()};p.goals.push(g);s.goalId=g.id;s.newIcon='🎯';s.newName='';s.newTarget='';s.showNewGoal=false;Store.save();repaintGoals();},style:{width:'100%',padding:'10px',borderRadius:'12px',fontSize:'14px',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',color:'#fff',fontWeight:700}},'创建目标'),
+      ):null,
+      (boost&&goalNow)?h('div',{style:{marginTop:'12px',padding:'8px 12px',borderRadius:'12px',background:'rgba(255,107,157,.07)'}},h('p',{style:{fontSize:'12px',color:'#E8527A'},html:'🔥 存入 ¥'+s.amount+'，<b>'+goalNow.name+'</b> 进度将提升 <b>'+boost+'%</b>！'})):null,
+    ];
+  };
+
+  return h('div',{class:'page'},
+    h('div',{class:'px5 head-grad-2',style:{paddingTop:'58px',paddingBottom:'12px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('button',{class:'ib tap',onclick:()=>navigate('/'),style:{width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,.8)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.back({color:'#7C5CFC',size:16})}),
+      h('h1',{style:{fontSize:'16px',color:'#1A1A2E',fontWeight:800}},s.mode==='spend'?'倾诉这一笔':'为目标添把火 🔥'),
+      h('div',{style:{width:'36px'}}),
+    ),
+    h('div',{class:'px5 head-grad-2',style:{paddingTop:'12px',paddingBottom:'12px'}},
+      h('div',{style:{display:'flex',gap:'4px',padding:'4px',borderRadius:'16px',background:'rgba(255,255,255,.6)'}},[{id:'spend',icon:'💳',label:'消费记账'},{id:'save',icon:'🔥',label:'小目标攒钱'}].map(m=>h('button',{class:'ib grow tap',onclick:()=>{s.mode=m.id;render();},style:{gap:'6px',padding:'10px',borderRadius:'12px',fontSize:'14px',fontWeight:700,background:s.mode===m.id?(m.id==='spend'?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'linear-gradient(135deg,#FF6B9D,#FF8FB4)'):'transparent',color:s.mode===m.id?'#fff':'#9B8EC4',boxShadow:s.mode===m.id?('0 4px 12px '+(m.id==='spend'?'rgba(124,92,252,.3)':'rgba(255,107,157,.3)')):'none'}},m.icon+' '+m.label))),
+    ),
+
+    h('div',{class:'px5',style:{marginTop:'4px',display:'flex',flexDirection:'column',gap:'12px'}},
+      h('div',{class:'card',style:{padding:'20px'}},
+        h('p',{style:{fontSize:'12px',marginBottom:'8px',color:'#B0B4C8'}},s.mode==='spend'?'消费金额':'存入金额（应花未花 / 节省冲动消费）'),
+        h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}},h('span',{style:{fontSize:'24px',color:'#9B8EC4',alignSelf:'flex-end',paddingBottom:'4px'}},'¥'),
+          h('input',{id:'amt-input',type:'text',inputmode:'decimal',value:s.amount,placeholder:'0',
+            ref:(el)=>{ if(!UI.add._amtFocused){ setTimeout(()=>{try{el.focus();}catch(_){} },60); UI.add._amtFocused=true; } },
+            oninput:(e)=>{ let v=e.target.value.replace(/[^0-9.]/g,''); const i=v.indexOf('.'); if(i>=0){ v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,''); } if(v.replace('.','').length>8)v=v.slice(0,9); s.amount=v; if(e.target.value!==v)e.target.value=v; },
+            style:{flex:1,minWidth:0,fontSize:'46px',fontWeight:900,color:s.mode==='save'?'#FF6B9D':'#1A1A2E',border:'none',outline:'none',background:'transparent',fontFamily:"'Plus Jakarta Sans',sans-serif",padding:0}}),
+          s.mode==='spend'?h('button',{class:'ib tap','aria-label':'按住说话',onpointerdown:(e)=>{if(e&&e.preventDefault)e.preventDefault();startVoice();},style:{width:'44px',height:'44px',borderRadius:'14px',flexShrink:0,background:'linear-gradient(135deg,#7C5CFC,#B490FF)',boxShadow:'0 4px 12px rgba(124,92,252,.3)',touchAction:'none',userSelect:'none'},html:I.mic({color:'#fff',size:19,sw:2.2})}):null,
+          s.mode==='spend'?h('button',{class:'ib tap','aria-label':'拍照或相册识别',onclick:()=>{const el=$('#ar-photo');if(el)el.click();},style:{width:'44px',height:'44px',borderRadius:'14px',flexShrink:0,background:'#F0ECFF'},html:I.cam({color:'#7C5CFC',size:19})}):null,
+        ),
+        s.mode==='spend'?h('input',{id:'ar-photo',type:'file',accept:'image/*',style:{display:'none'},onchange:(e)=>{const f=e.target.files&&e.target.files[0];e.target.value='';pickImage(f);}}):null,
+        (s.mode==='spend'&&(s.receipt||s._ocr))?h('div',{class:'row',style:{gap:'10px',marginBottom:'10px',padding:'8px',borderRadius:'12px',background:'#F8F9FE'}},
+          s.receipt?h('img',{src:s.receipt,style:{width:'44px',height:'44px',borderRadius:'8px',objectFit:'cover',flexShrink:0}}):h('div',{class:'ib',style:{width:'44px',height:'44px',borderRadius:'8px',background:'#EEF0F8',flexShrink:0,fontSize:'18px'}},'🧾'),
+          h('div',{class:'grow'},h('p',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700}},s._ocr?'正在识别小票…':'已附小票图片'),h('p',{style:{fontSize:'10px',color:'#B0B4C8'}},s._ocr?'自动提取金额中，可稍候':'金额可在上方手动校正')),
+          s._ocr?h('div',{style:{width:'16px',height:'16px',borderRadius:'50%',flexShrink:0,border:'2px solid #7C5CFC',borderTopColor:'transparent',animation:'spin .8s linear infinite'}}):h('button',{class:'ib',onclick:()=>{s.receipt=null;render();},style:{width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,background:'#FFF0F5'},html:I.x({color:'#FF6B9D',size:12})}),
+        ):null,
+        s.mode==='spend'?h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginBottom:'10px'}},'🎤 按住说话 · 📷 拍照/相册识别 · 也可直接键盘输入'):null,
+        s.mode==='spend'?h('input',{id:'ar-name',value:s.name,placeholder:'备注名称（不填则默认为该类别名）',class:'field',style:{fontSize:'13px',padding:'10px 12px'},oninput:(e)=>{s.name=e.target.value;}}):h('div',{},h('p',{style:{fontSize:'12px',marginBottom:'6px',color:'#9B8EC4'}},'这笔钱原本打算花在哪？（可选）'),h('input',{id:'ar-savedfrom',value:s.savedFrom,placeholder:'例：忍住没买的奶茶、没跟风的潮牌...',class:'field',style:{fontSize:'13px',padding:'10px 12px'},oninput:(e)=>{s.savedFrom=e.target.value;}})),
+      ),
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{class:'between'},h('div',{class:'row',style:{gap:'8px'}},h('span',{class:'ib',html:I.calendar({color:'#7C5CFC',size:16})}),h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},'消费日期')),h('input',{id:'ar-date',type:'date',value:s.date||tsToInput(Date.now()),oninput:(e)=>{s.date=e.target.value;},style:{fontSize:'13px',padding:'8px 10px',borderRadius:'10px',border:'1.5px solid rgba(124,92,252,.18)',outline:'none',background:'#F8F9FE',color:'#1A1A2E',fontFamily:'inherit'}}))):null,
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('p',{style:{fontSize:'14px',marginBottom:'12px',color:'#1A1A2E',fontWeight:800}},'消费类型'),h('div',{id:'ar-types',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},typeChips())):null,
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('p',{style:{fontSize:'14px',marginBottom:'12px',color:'#1A1A2E',fontWeight:800}},'购买动机'),h('div',{id:'ar-motivs',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},motivChips())):null,
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{id:'ar-recur'},recurInner())):null,
+
+      s.mode==='save'?h('div',{class:'card',style:{padding:'16px'}},
+        h('p',{style:{fontSize:'14px',marginBottom:'12px',color:'#1A1A2E',fontWeight:800}},'存入哪个目标？'),
+        h('div',{id:'ar-goals'},goalInner()),
+      ):null,
+
+      h('button',{class:'ib tap',onclick:()=>s.mode==='save'?saveSave():saveSpend(),style:{width:'100%',padding:'16px',borderRadius:'16px',fontSize:'16px',gap:'8px',color:'#fff',fontWeight:800,background:s.mode==='save'?'linear-gradient(135deg,#FF6B9D,#FF8FB4)':'linear-gradient(135deg,#7C5CFC,#9B7AFF)',boxShadow:s.mode==='save'?'0 8px 24px rgba(255,107,157,.4)':'0 8px 24px rgba(124,92,252,.4)'}},h('span',{class:'ib',html:(s.mode==='save'?I.flame:I.check)({color:'#fff',size:20})}),s.mode==='save'?'为目标添一把火 🔥':'记下这一刻'),
+    ),
+    null,
+  );
+};
+
+/* ---------- 语音录入（修复版：指针事件 + 浮层，不销毁按钮；接真实语音识别 + 中文数字解析） ---------- */
+const SPEECH_OK = !!(typeof window!=='undefined' && (window.SpeechRecognition||window.webkitSpeechRecognition));
+let _recTimer=null, _speech=null;
+function cn2num(s){
+  const map={零:0,〇:0,一:1,壹:1,二:2,两:2,贰:2,三:3,叁:3,四:4,肆:4,五:5,伍:5,六:6,陆:6,七:7,柒:7,八:8,捌:8,九:9,玖:9};
+  const unit={十:10,拾:10,百:100,佰:100,千:1000,仟:1000,万:10000};
+  let total=0,section=0,num=0,matched=false;
+  for(const ch of s){
+    if(ch in map){ num=map[ch]; matched=true; }
+    else if(ch in unit){ matched=true; const u=unit[ch]; if(u===10000){ section=(section+num)*u; total+=section; section=0; num=0; } else { if(num===0)num=1; section+=num*u; num=0; } }
+  }
+  return matched?(total+section+num):null;
+}
+function parseVoice(text){
+  let amount=null,name='',type=null;
+  const am=text.match(/(\d+(?:\.\d+)?)/);
+  if(am){ amount=parseFloat(am[1]); }
+  else { const cm=text.match(/([零〇一壹二两贰三叁四肆五伍六陆七柒八捌九玖十拾百佰千仟万]+)/); if(cm){ const v=cn2num(cm[1]); if(v!=null&&v>0) amount=v; } }
+  const KW=[['餐饮',/奶茶|咖啡|饭|餐|外卖|吃|早餐|午餐|晚餐|火锅|烧烤|零食|喝/],['交通',/地铁|公交|打车|出租|滴滴|高铁|火车|机票|油费|停车|车费/],['购物',/买|衣服|鞋|包|裙|网购|淘宝|京东|拼多多|超市/],['娱乐',/电影|游戏|唱歌|ktv|演唱会|会员|音乐|视频/],['运动',/健身|跑步|运动|游泳|球|瑜伽/],['美妆',/化妆|护肤|口红|面膜|美妆|香水/],['学习',/书|课程|学习|培训|考试|网课/]];
+  for(const kw of KW){ if(kw[1].test(text)){ type=kw[0]; break; } }
+  name=text.replace(/(\d+(?:\.\d+)?)/,'').replace(/[零〇一壹二两贰三叁四肆五伍六陆七柒八捌九玖十拾百佰千仟万]+\s*(块|元|钱|圆|毛)?/,'').replace(/(花了|花|用了|用|多少|大概|块钱|块|元钱|元|钱)/g,'').trim();
+  if(name.length>12) name=name.slice(0,12);
+  return {amount,name,type};
+}
+function showRecOverlay(){
+  const o=$('#overlay'); if(!o) return; o.innerHTML='';
+  o.appendChild(h('div',{},
+    h('div',{class:'backdrop',style:{background:'rgba(26,26,46,.55)',zIndex:80}}),
+    h('div',{style:{position:'absolute',left:'50%',top:'42%',transform:'translate(-50%,-50%)',zIndex:85,textAlign:'center',width:'240px'}},
+      h('div',{class:'ib',style:{width:'92px',height:'92px',borderRadius:'50%',margin:'0 auto 18px',background:'linear-gradient(135deg,#FF4D6D,#FF6B9D)',boxShadow:'0 0 40px rgba(255,77,109,.6)'}},
+        h('div',{class:'ib',style:{gap:'3px',height:'30px'}},[1,2,3,4,5].map(i=>h('div',{style:{width:'5px',background:'#fff',borderRadius:'3px',height:'8px',animation:'wave .7s infinite',animationDelay:(i*0.1)+'s'}})))),
+      h('p',{id:'rec-sec',style:{color:'#fff',fontSize:'22px',fontWeight:900,marginBottom:'6px'}},'0s'),
+      h('p',{style:{color:'rgba(255,255,255,.85)',fontSize:'13px',fontWeight:600}},'正在聆听… 松开结束'),
+      h('p',{style:{color:'rgba(255,255,255,.6)',fontSize:'11px',marginTop:'4px'}},SPEECH_OK?'试试说"奶茶十八块"':'识别需通过本地服务器/HTTPS 打开'),
+    ),
+  ));
+}
+function hideRecOverlay(){ const o=$('#overlay'); if(o) o.innerHTML=''; }
+function startVoice(){
+  const s=UI.add; if(s.recording) return;
+  s.recording=true; s.recSec=0; s._transcript=null; s._speechErr=null;
+  showRecOverlay();
+  _recTimer=setInterval(()=>{ s.recSec++; const el=$('#rec-sec'); if(el)el.textContent=s.recSec+'s'; },1000);
+  const SR=(typeof window!=='undefined')&&(window.SpeechRecognition||window.webkitSpeechRecognition);
+  if(SR){ try{ _speech=new SR(); _speech.lang='zh-CN'; _speech.interimResults=false; _speech.maxAlternatives=1;
+    _speech.onresult=(e)=>{ try{ s._transcript=e.results[0][0].transcript; }catch(_){} };
+    _speech.onerror=(e)=>{ s._speechErr=(e&&e.error)||'error'; };
+    _speech.start();
+  }catch(_){ _speech=null; } }
+}
+function stopVoice(){
+  const s=UI.add; if(!s.recording) return;
+  s.recording=false;
+  if(_recTimer){ clearInterval(_recTimer); _recTimer=null; }
+  if(_speech){ try{ _speech.stop(); }catch(_){} }
+  hideRecOverlay();
+  setTimeout(()=>{
+    const t=(s._transcript||'').trim();
+    if(t){ const r=parseVoice(t); if(r.amount!=null&&!isNaN(r.amount)&&r.amount>0)s.amount=String(r.amount); if(r.name)s.name=r.name; if(r.type)s.type=r.type; showToast('已识别：'+t.slice(0,16)); }
+    else { showToast(SPEECH_OK?'没听清，请再说一次或手动输入':'该打开方式不支持语音，请手动输入金额'); }
+    s._transcript=null; _speech=null;
+    if(currentPath()==='/add') render();
+  },300);
+}
+
+/* ---------- 拍照 / 相册 识别（图片→金额） ---------- */
+function pickImage(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ compressImage(reader.result,(dataUrl)=>{ UI.add.receipt=dataUrl; UI.add._ocr=true; render(); recognizeReceipt(dataUrl); }); };
+  reader.onerror=()=>showToast('读取图片失败');
+  reader.readAsDataURL(file);
+}
+function compressImage(dataUrl,cb){
+  try{
+    const img=new Image();
+    img.onload=()=>{ try{
+      const max=1000; let w=img.width,hh=img.height;
+      if(w>max||hh>max){ if(w>=hh){ hh=Math.round(hh*max/w); w=max; } else { w=Math.round(w*max/hh); hh=max; } }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=hh;
+      cv.getContext('2d').drawImage(img,0,0,w,hh);
+      cb(cv.toDataURL('image/jpeg',0.6));
+    }catch(e){ cb(dataUrl); } };
+    img.onerror=()=>cb(dataUrl);
+    img.src=dataUrl;
+  }catch(e){ cb(dataUrl); }
+}
+function finishOCR(amount,name,type,msg){
+  const s=UI.add; s._ocr=false;
+  if(amount!=null&&!isNaN(amount)&&amount>0) s.amount=String(amount);
+  if(name&&!s.name) s.name=name;
+  if(type) s.type=type;
+  showToast(msg||(amount?('识别金额 ¥'+amount):'未识别到金额，请手动输入'));
+  if(currentPath()==='/add') render();
+}
+function recognizeReceipt(dataUrl){
+  const a=Store.data.ai;
+  if(a&&a.enabled&&a.apiKey&&a.vision){
+    aiVision(dataUrl).then(r=>finishOCR(r.amount,r.name,r.type,r.amount?('AI 识别 ¥'+r.amount):'AI 未读出金额，请手动输入'))
+      .catch(()=>ocrTesseract(dataUrl));
+    return;
+  }
+  ocrTesseract(dataUrl);
+}
+function ocrTesseract(dataUrl){
+  if(typeof navigator!=='undefined'&&navigator.onLine===false){ finishOCR(null,null,null,'离线无法识别，图片已附上，请手动输入'); return; }
+  loadTesseract().then(T=>{
+    T.recognize(dataUrl,'chi_sim+eng').then(res=>{ const text=(res&&res.data&&res.data.text)||''; const r=parseReceiptText(text); finishOCR(r.amount,r.name,r.type, r.amount?('识别金额 ¥'+r.amount+'，可校正'):'没读准金额，请手动输入'); })
+      .catch(()=>finishOCR(null,null,null,'识别失败，图片已附上，请手动输入'));
+  }).catch(()=>finishOCR(null,null,null,'识别库加载失败（需联网），图片已附上'));
+}
+let _tess=null;
+function loadTesseract(){
+  return new Promise((res,rej)=>{
+    if(typeof window!=='undefined'&&window.Tesseract) return res(window.Tesseract);
+    if(_tess) return _tess.then(res,rej);
+    _tess=new Promise((rs,rj)=>{ try{ const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'; sc.onload=()=>window.Tesseract?rs(window.Tesseract):rj(new Error('no-tesseract')); sc.onerror=()=>rj(new Error('load-fail')); document.head.appendChild(sc); }catch(e){ rj(e); } });
+    _tess.then(res,rej);
+  });
+}
+function parseReceiptText(text){
+  const t=(text||'').replace(/\s+/g,' ');
+  let amount=null;
+  // 优先"合计/总计/应收/金额/实付"后面的数字
+  const key=t.match(/(合计|總計|总计|应收|應收|实付|實付|金额|金額|总金额|應付|应付|total|amount)[^0-9]{0,6}([0-9]+(?:\.[0-9]{1,2})?)/i);
+  if(key){ amount=parseFloat(key[2]); }
+  if(amount==null){ const ms=(t.match(/[0-9]+(?:\.[0-9]{1,2})?/g)||[]).filter(x=>{const n=parseFloat(x);return n>0&&n<100000;}); if(ms.length){ const money=ms.filter(x=>/\.[0-9]{2}$/.test(x)); const pool=(money.length?money:ms).map(parseFloat); amount=Math.max.apply(null,pool); } }
+  let type=null; const KW=[['餐饮',/餐|饭|奶茶|咖啡|超市|食|烤|火锅|外卖/],['购物',/服饰|衣|鞋|商场|百货|优衣|zara|uniqlo/i],['交通',/出租|滴滴|地铁|加油|停车|高铁|机票/],['娱乐',/影院|电影|ktv|游戏/i],['美妆',/美妆|护肤|化妆|丝芙兰/]];
+  for(const k of KW){ if(k[1].test(t)){ type=k[0]; break; } }
+  let name=''; const m=t.match(/[一-龥]{2,8}(店|超市|餐厅|咖啡|奶茶|商场|百货)/); if(m) name=m[0]; if(name.length>10)name=name.slice(0,10);
+  return {amount,name,type};
+}
+function aiVision(dataUrl){
+  const a=Store.data.ai;
+  const sys='你是小票识别助手。从图片中读出本次消费的总金额，并猜测消费类别（餐饮/购物/娱乐/运动/交通/美妆/学习/其他之一）与商家名。只返回 JSON：{"amount":数字,"name":"商家或商品","category":"类别"}，无法识别的字段留空。';
+  const url=a.baseUrl.replace(/\/+$/,'')+'/chat/completions';
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+a.apiKey},
+    body:JSON.stringify({model:a.model,messages:[{role:'system',content:sys},{role:'user',content:[{type:'text',text:'识别这张小票'},{type:'image_url',image_url:{url:dataUrl}}]}],temperature:0,max_tokens:200})})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(d=>{ const c=d.choices[0].message.content; const mm=c.match(/\{[\s\S]*\}/); const o=JSON.parse(mm?mm[0]:c); return {amount:o.amount!=null?parseFloat(o.amount):null,name:o.name||'',type:PURCHASE_TYPES.indexOf(o.category)>=0?o.category:null}; });
+}
+
+/* ---------- global toast ---------- */
+let toastTimer=null;
+function showToast(msg){
+  const o=$('#overlay');
+  const t=h('div',{class:'toast',style:{bottom:'110px'}},h('span',{class:'ib',html:I.check({color:'#fff',size:14})}),msg);
+  o.appendChild(t);
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ if(t.parentNode)t.parentNode.removeChild(t); },1800);
+}
+
+/* ---------- 通用底部弹层 ---------- */
+function sheet(title,sub,bodyNode){
+  const close=()=>openOverlay(null);
+  return h('div',{},
+    h('div',{class:'backdrop',onclick:close}),
+    h('div',{class:'sheet',style:{maxHeight:'88%'}},
+      h('div',{class:'handle'}),
+      h('div',{class:'between',style:{padding:'12px 20px 8px',flexShrink:0}},h('div',{},h('p',{style:{fontSize:'16px',fontWeight:800,color:'#1A1A2E'}},title),sub?h('p',{style:{fontSize:'11px',color:'#9B8EC4',marginTop:'2px'}},sub):null),h('button',{class:'ib tap',onclick:close,style:{width:'30px',height:'30px',borderRadius:'50%',background:'#EEF0F8'},html:I.x({color:'#9B8EC4',size:14})})),
+      h('div',{class:'noscroll',style:{flex:1,overflowY:'auto',padding:'4px 20px 28px'}},bodyNode),
+    ),
+  );
+}
+
+/* ---------- 编辑/删除 核心（纯逻辑，便于测试） ---------- */
+function applyTxEdit(p,id,f){ const tx=p.transactions.find(t=>t.id===id); if(!tx)return false; const amt=parseFloat(f.amount); if(!amt||amt<=0)return false; const meta=catMeta(f.category); tx.name=(f.name||'').trim()||f.category; tx.amount=amt; tx.category=f.category; tx.catIcon=meta.icon; tx.catColor=meta.color; tx.motivation=f.motivation; tx.mood=f.mood; tx.ts=inputToTs(f.date,tx.ts); return true; }
+function deleteTx(p,id){ const n=p.transactions.length; p.transactions=p.transactions.filter(t=>t.id!==id); return p.transactions.length<n; }
+function applyGoalEdit(p,id,f){ const g=p.goals.find(x=>x.id===id); if(!g)return false; const nm=(f.name||'').trim(); const tg=parseInt((f.target||'').toString().replace(/[^0-9]/g,''))||0; if(!nm||tg<=0)return false; g.name=nm; g.target=tg; g.icon=f.icon; return true; }
+function deleteGoal(p,id,transferToId){ const g=p.goals.find(x=>x.id===id); if(!g)return false; if(transferToId){ const t=p.goals.find(x=>x.id===transferToId); if(t){ t.current+=g.current; p.contributions.forEach(c=>{ if(c.goalId===id)c.goalId=transferToId; }); } else { transferToId=null; } } if(!transferToId){ p.contributions=p.contributions.filter(c=>c.goalId!==id); } p.goals=p.goals.filter(x=>x.id!==id); if(UI.budget.goalId===id)UI.budget.goalId=transferToId||null; return true; }
+
+/* ---------- 账单编辑 / 删除 ---------- */
+function openTxEdit(txId){
+  const p=currentProfile(); const tx=p.transactions.find(t=>t.id===txId); if(!tx){ openOverlay(null); return h('div',{}); }
+  if(!UI.txEdit||UI.txEdit.id!==txId){ UI.txEdit={id:txId,name:tx.name,amount:String(tx.amount),date:tsToInput(tx.ts),category:tx.category||'其他',motivation:tx.motivation||'刚需维生',mood:tx.mood||null,confirm:false}; }
+  const e=UI.txEdit;
+  const chip=(label,on,onclick)=>h('button',{class:'tap',onclick,style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:on?'#fff':'#6B7280',boxShadow:on?'0 3px 10px rgba(124,92,252,.25)':'none'}},label);
+  const save=()=>{
+    const amt=parseFloat(e.amount); if(!amt||amt<=0){ showToast('请输入有效金额'); return; }
+    applyTxEdit(p,txId,e);
+    UI.txEdit=null; Store.save(); openOverlay(null); render(); showToast('已更新这笔账单');
+  };
+  const del=()=>{ deleteTx(p,txId); UI.txEdit=null; Store.save(); openOverlay(null); render(); showToast('已删除该账单'); };
+  const reopen=()=>openOverlay(openTxEdit(txId));
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'名称'),
+    h('input',{value:e.name,class:'field',style:{marginBottom:'12px',fontSize:'14px'},oninput:(ev)=>{e.name=ev.target.value;}}),
+    h('div',{class:'row',style:{gap:'12px',marginBottom:'12px'}},
+      h('div',{style:{flex:1}},h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'金额 ¥'),h('input',{type:'number',inputmode:'decimal',value:e.amount,class:'field',style:{fontSize:'14px'},oninput:(ev)=>{e.amount=ev.target.value;}})),
+      h('div',{style:{flex:1}},h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'日期'),h('input',{type:'date',value:e.date,class:'field',style:{fontSize:'14px'},oninput:(ev)=>{e.date=ev.target.value;}})),
+    ),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'类型'),
+    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allTypes(p).map(t=>chip(catMeta(t).icon+' '+t,e.category===t,()=>{e.category=t;reopen();})).concat([h('button',{class:'tap',onclick:()=>openOverlay(openAddCategory((nm)=>{UI.txEdit.category=nm;openOverlay(openTxEdit(UI.txEdit.id));})),style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},'+ 新增类别')])),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'动机'),
+    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allMotivs(p).map(m=>chip(m.emoji+' '+m.id,e.motivation===m.id,()=>{e.motivation=m.id;reopen();}))),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'心情'),
+    h('div',{class:'row',style:{gap:'8px',marginBottom:'18px'}},
+      chip('😊 真香',e.mood==='great',()=>{e.mood=e.mood==='great'?null:'great';reopen();}),
+      chip('😰 后悔',e.mood==='regret',()=>{e.mood=e.mood==='regret'?null:'regret';reopen();}),
+      chip('⏳ 未评价',e.mood==null,()=>{e.mood=null;reopen();}),
+    ),
+    h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'10px'}},'保存修改'),
+    e.confirm
+      ? h('div',{class:'row',style:{gap:'10px'}},h('button',{class:'ib tap',onclick:del,style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'#FF4D6D'}},'确认删除'),h('button',{class:'ib tap',onclick:()=>{e.confirm=false;reopen();},style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#F4F5FB'}},'取消'))
+      : h('button',{class:'ib tap',onclick:()=>{e.confirm=true;reopen();},style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除这笔账单'),
+  );
+  return sheet('编辑账单','可改名称/金额/类型/动机/日期/心情',body);
+}
+
+/* ---------- 许愿池目标编辑 / 删除 ---------- */
+function openGoalEdit(goalId){
+  const p=currentProfile(); const g=p.goals.find(x=>x.id===goalId); if(!g){ openOverlay(null); return h('div',{}); }
+  if(!UI.goalEdit||UI.goalEdit.id!==goalId){ UI.goalEdit={id:goalId,icon:g.icon,name:g.name,target:String(g.target),confirm:false}; }
+  const e=UI.goalEdit;
+  const reopen=()=>openOverlay(openGoalEdit(goalId));
+  const save=()=>{
+    const nm=(e.name||'').trim(); const tg=parseInt((e.target||'').replace(/[^0-9]/g,''))||0;
+    if(!nm){ showToast('请填写目标名称'); return; }
+    if(tg<=0){ showToast('请填写有效目标金额'); return; }
+    applyGoalEdit(p,goalId,e);
+    UI.goalEdit=null; Store.save(); openOverlay(null); render(); showToast('心愿已更新');
+  };
+  const del=()=>{ const tt=e.transferTo||null; deleteGoal(p,goalId,tt); UI.goalEdit=null; Store.save(); openOverlay(null); render(); showToast(tt?'已删除，并把已蓄力转移过去 ✓':'已删除该心愿'); };
+  const others=p.goals.filter(x=>x.id!==goalId);
+  const canTransfer=others.length>0&&g.current>0;
+  const tchip=(label,on,onclick)=>h('button',{class:'tap',onclick,style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:on?'#fff':'#6B7280',border:on?'none':'1px solid #EEF0F8'}},label);
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'图标'),
+    h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'14px'}},GOAL_ICONS.map(ic=>h('button',{class:'ib tap',onclick:()=>{e.icon=ic;reopen();},style:{width:'42px',height:'42px',borderRadius:'12px',fontSize:'20px',background:e.icon===ic?'rgba(124,92,252,.12)':'#F4F5FB',border:'1.5px solid '+(e.icon===ic?'#7C5CFC':'transparent')}},ic))),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'目标名称'),
+    h('input',{value:e.name,class:'field',style:{marginBottom:'12px',fontSize:'14px'},oninput:(ev)=>{e.name=ev.target.value;}}),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'目标金额 ¥'),
+    h('input',{type:'number',inputmode:'numeric',value:e.target,class:'field',style:{marginBottom:'6px',fontSize:'14px'},oninput:(ev)=>{e.target=ev.target.value;}}),
+    h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginBottom:'18px'}},'已蓄力 ¥'+fmt(g.current)+'，不会因改目标而丢失'),
+    h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'10px'}},'保存修改'),
+    e.confirm
+      ? h('div',{style:{padding:'14px',borderRadius:'14px',background:'#FFF0F5',border:'1px solid rgba(255,107,157,.2)'}},
+          canTransfer?h('div',{},
+            h('p',{style:{fontSize:'12px',color:'#C04470',fontWeight:700,marginBottom:'8px'}},'把已蓄力 ¥'+fmt(g.current)+' 转移到？（不选=直接删除）'),
+            h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px',marginBottom:'12px'}},others.map(o=>tchip(o.icon+' '+o.name,e.transferTo===o.id,()=>{e.transferTo=(e.transferTo===o.id?null:o.id);reopen();}))),
+          ):null,
+          h('div',{class:'row',style:{gap:'10px'}},h('button',{class:'ib tap',onclick:del,style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'#FF4D6D'}},e.transferTo?'转移并删除':'确认删除'),h('button',{class:'ib tap',onclick:()=>{e.confirm=false;e.transferTo=null;reopen();},style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#fff'}},'取消')),
+        )
+      : h('button',{class:'ib tap',onclick:()=>{e.confirm=true;reopen();},style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除这个心愿'),
+  );
+  return sheet('编辑心愿','改名称/图标/目标金额',body);
+}
+function openGoalNew(){
+  if(!UI.goalNew) UI.goalNew={icon:'🎯',name:'',target:''};
+  const e=UI.goalNew, p=currentProfile();
+  const reopen=()=>openOverlay(openGoalNew());
+  const create=()=>{ const nm=(e.name||'').trim(); const tg=parseInt((e.target||'').replace(/[^0-9]/g,''))||0; if(!nm){showToast('请填写心愿名称');return;} if(tg<=0){showToast('请填写目标金额');return;} const g={id:'g'+Date.now(),name:nm,icon:e.icon||'🎯',current:0,target:tg,color:GOAL_COLORS[p.goals.length%GOAL_COLORS.length],createdAt:Date.now()}; p.goals.push(g); UI.budget.goalId=g.id; UI.goalNew=null; Store.save(); openOverlay(null); render(); showToast('已新增心愿 ✨'); };
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'图标'),
+    h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'14px'}},GOAL_ICONS.map(ic=>h('button',{class:'ib tap',onclick:()=>{e.icon=ic;reopen();},style:{width:'42px',height:'42px',borderRadius:'12px',fontSize:'20px',background:e.icon===ic?'rgba(124,92,252,.12)':'#F4F5FB',border:'1.5px solid '+(e.icon===ic?'#7C5CFC':'transparent')}},ic))),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'心愿名称'),
+    h('input',{value:e.name,placeholder:'例如 iPad Pro / 一次旅行',class:'field',style:{marginBottom:'12px',fontSize:'14px'},oninput:(ev)=>{e.name=ev.target.value;}}),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'目标金额 ¥'),
+    h('input',{value:e.target,type:'number',inputmode:'numeric',placeholder:'5000',class:'field',style:{marginBottom:'18px',fontSize:'14px'},oninput:(ev)=>{e.target=ev.target.value;}}),
+    h('button',{class:'ib tap',onclick:create,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'创建心愿'),
+  );
+  return sheet('新增心愿','给想要的东西定个小目标',body);
+}
+/* ---------- 新增/编辑 消费类别（自定义 + 符号库） ---------- */
+function openAddCategory(onCreate,editName){
+  const p=currentProfile();
+  const editing=editName?((p.customTypes||[]).find(c=>c.name===editName)):null;
+  const key=editName||'__new__';
+  if(!UI.addCat||UI.addCat._for!==key) UI.addCat={_for:key,name:editing?editing.name:'',icon:editing?editing.icon:'🏷️'};
+  const e=UI.addCat;
+  const reopen=()=>openOverlay(openAddCategory(onCreate,editName));
+  const done=(nm)=>{ UI.addCat=null; Store.save(); openOverlay(null); if(onCreate)onCreate(nm); else render(); };
+  const save=()=>{
+    const nm=(e.name||'').trim();
+    if(!nm){ showToast('请输入类别名称'); return; }
+    if(editing){
+      if(nm!==editing.name && (allTypes(p).indexOf(nm)>=0||PURCHASE_TYPES.indexOf(nm)>=0)){ showToast('「'+nm+'」已存在'); return; }
+      const old=editing.name; editing.name=nm; editing.icon=e.icon||editing.icon;
+      p.transactions.forEach(t=>{ if(t.category===old){ t.category=nm; const mt=catMeta(nm); t.catIcon=mt.icon; t.catColor=mt.color; } });
+      (p.recurrings||[]).forEach(r=>{ if(r.category===old) r.category=nm; });
+      showToast('已更新类别'); done(nm);
+    } else {
+      if(allTypes(p).indexOf(nm)>=0){ showToast('「'+nm+'」已存在'); return; }
+      const color=CAT_COLORS[((p.customTypes||[]).length)%CAT_COLORS.length];
+      (p.customTypes=p.customTypes||[]).push({name:nm,icon:e.icon||'🏷️',color});
+      showToast('已新增类别「'+nm+'」'); done(nm);
+    }
+  };
+  const del=()=>{ if(!editing)return; const old=editing.name; p.customTypes=p.customTypes.filter(c=>c.name!==old); p.transactions.forEach(t=>{ if(t.category===old){ t.category='其他'; const mt=catMeta('其他'); t.catIcon=mt.icon; t.catColor=mt.color; } }); showToast('已删除「'+old+'」，相关账单转为「其他」'); done('其他'); };
+  const body=h('div',{},
+    h('div',{class:'row',style:{gap:'12px',alignItems:'center',marginBottom:'14px'}},
+      h('div',{class:'ib',style:{width:'52px',height:'52px',borderRadius:'14px',fontSize:'26px',flexShrink:0,background:'#F4F5FB',border:'1.5px solid rgba(124,92,252,.15)'}},e.icon),
+      h('input',{value:e.name,placeholder:'类别名称（如 宠物 / 房租 / 数码）',class:'field',style:{flex:1,fontSize:'15px'},oninput:(ev)=>{e.name=ev.target.value;}}),
+    ),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'选个图标'),
+    h('div',{class:'noscroll',style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:'6px',maxHeight:'200px',overflowY:'auto',marginBottom:'18px'}},
+      SYMBOLS.map(sy=>h('button',{class:'ib tap',onclick:()=>{e.icon=sy;reopen();},style:{height:'40px',borderRadius:'10px',fontSize:'20px',background:e.icon===sy?'rgba(124,92,252,.14)':'#F8F9FE',border:'1.5px solid '+(e.icon===sy?'#7C5CFC':'transparent')}},sy))),
+    h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:editing?'10px':'0'}},editing?'保存修改':'创建类别'),
+    editing?h('button',{class:'ib tap',onclick:del,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该类别'):null,
+  );
+  return sheet(editing?'编辑类别':'新增消费类别',editing?'改名称/图标或删除':'取个名字、从符号库选个图标',body);
+}
+function openManageCategories(){
+  const p=currentProfile(); const customs=(p.customTypes||[]);
+  const reopen=()=>openOverlay(openManageCategories());
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'自定义类别（可改名 / 换图标 / 删除）'),
+    customs.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},customs.map(c=>h('button',{class:'between tap',onclick:()=>openOverlay(openAddCategory(reopen,c.name)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},c.icon),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},c.name)),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}))))
+      :h('p',{style:{fontSize:'12px',color:'#B0B4C8',textAlign:'center',padding:'12px 0 16px'}},'还没有自定义类别'),
+    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddCategory(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'14px'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增类别'),
+    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#F4F5FB'}},h('p',{style:{fontSize:'11px',color:'#9B8EC4',lineHeight:1.7}},'内置类别：'+PURCHASE_TYPES.join(' / ')+'（系统默认，不可删除）')),
+  );
+  return sheet('管理消费类别','增 / 删 / 改自定义类别',body);
+}
+/* ---------- 新增/编辑 购买动机 ---------- */
+function openAddMotiv(onCreate,editName){
+  const p=currentProfile();
+  const editing=editName?((p.customMotivs||[]).find(m=>m.id===editName)):null;
+  const key=editName||'__new__';
+  if(!UI.addMotiv||UI.addMotiv._for!==key) UI.addMotiv={_for:key,name:editing?editing.id:'',icon:editing?editing.emoji:'😊'};
+  const e=UI.addMotiv;
+  const reopen=()=>openOverlay(openAddMotiv(onCreate,editName));
+  const done=(nm)=>{ UI.addMotiv=null; Store.save(); openOverlay(null); if(onCreate)onCreate(nm); else render(); };
+  const exists=(nm)=>allMotivs(p).some(m=>m.id===nm);
+  const save=()=>{
+    const nm=(e.name||'').trim(); if(!nm){ showToast('请输入动机名称'); return; }
+    if(editing){
+      if(nm!==editing.id && exists(nm)){ showToast('「'+nm+'」已存在'); return; }
+      const old=editing.id; editing.id=nm; editing.emoji=e.icon||editing.emoji;
+      p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation=nm; });
+      (p.recurrings||[]).forEach(r=>{ if(r.motivation===old) r.motivation=nm; });
+      showToast('已更新动机'); done(nm);
+    } else {
+      if(exists(nm)){ showToast('「'+nm+'」已存在'); return; }
+      (p.customMotivs=p.customMotivs||[]).push({id:nm,emoji:e.icon||'😊'});
+      showToast('已新增动机「'+nm+'」'); done(nm);
+    }
+  };
+  const del=()=>{ if(!editing)return; const old=editing.id; p.customMotivs=p.customMotivs.filter(m=>m.id!==old); p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation='刚需维生'; }); showToast('已删除「'+old+'」，相关账单转为「刚需维生」'); done('刚需维生'); };
+  const body=h('div',{},
+    h('div',{class:'row',style:{gap:'12px',alignItems:'center',marginBottom:'14px'}},
+      h('div',{class:'ib',style:{width:'52px',height:'52px',borderRadius:'14px',fontSize:'26px',flexShrink:0,background:'#F4F5FB',border:'1.5px solid rgba(124,92,252,.15)'}},e.icon),
+      h('input',{value:e.name,placeholder:'动机名称（如 犒劳自己 / 冲动跟风）',class:'field',style:{flex:1,fontSize:'15px'},oninput:(ev)=>{e.name=ev.target.value;}}),
+    ),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'选个表情'),
+    h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'18px'}},MOTIV_EMOJIS.map(sy=>h('button',{class:'ib tap',onclick:()=>{e.icon=sy;reopen();},style:{width:'42px',height:'42px',borderRadius:'10px',fontSize:'20px',background:e.icon===sy?'rgba(124,92,252,.14)':'#F8F9FE',border:'1.5px solid '+(e.icon===sy?'#7C5CFC':'transparent')}},sy))),
+    h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:editing?'10px':'0'}},editing?'保存修改':'创建动机'),
+    editing?h('button',{class:'ib tap',onclick:del,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该动机'):null,
+  );
+  return sheet(editing?'编辑动机':'新增购买动机',editing?'改名称/表情或删除':'自定义你的消费动机',body);
+}
+function openManageMotivations(){
+  const p=currentProfile(); const customs=(p.customMotivs||[]);
+  const reopen=()=>openOverlay(openManageMotivations());
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'自定义动机（可改名 / 换表情 / 删除）'),
+    customs.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},customs.map(c=>h('button',{class:'between tap',onclick:()=>openOverlay(openAddMotiv(reopen,c.id)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},c.emoji),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},c.id)),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}))))
+      :h('p',{style:{fontSize:'12px',color:'#B0B4C8',textAlign:'center',padding:'12px 0 16px'}},'还没有自定义动机'),
+    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddMotiv(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'14px'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增动机'),
+    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#F4F5FB'}},h('p',{style:{fontSize:'11px',color:'#9B8EC4',lineHeight:1.7}},'内置动机：'+MOTIVATIONS.map(m=>m.id).join(' / ')+'（系统默认，不可删除）')),
+  );
+  return sheet('管理购买动机','增 / 删 / 改自定义动机',body);
+}
+/* ---------- 定期扣除管理 ---------- */
+function openRecurrings(){
+  const p=currentProfile(); const rs=(p.recurrings||[]);
+  const reopen=()=>openOverlay(openRecurrings());
+  const monthlyEst=rs.filter(r=>r.active!==false).reduce((s,r)=>{ const f={daily:30,weekly:4.3,biweekly:2.15,monthly:1,quarterly:1/3}[r.period]||1; return s+r.amount*f; },0);
+  const body=h('div',{},
+    rs.length?h('div',{},
+      h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'rgba(124,92,252,.06)',marginBottom:'12px'}},h('p',{style:{fontSize:'12px',color:'#7B6FAE'},html:'共 <b style="color:#7C5CFC">'+rs.filter(r=>r.active!==false).length+'</b> 项生效中 · 预计每月自动扣除约 <b style="color:#7C5CFC">¥'+fmt(monthlyEst)+'</b>'})),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},rs.map(r=>{const meta=catMeta(r.category);const off=r.active===false;return h('div',{class:'row',style:{gap:'12px',padding:'12px',borderRadius:'12px',background:'#F8F9FE',opacity:off?.55:1}},
+        h('div',{class:'ib',style:{width:'40px',height:'40px',borderRadius:'12px',fontSize:'20px',flexShrink:0,background:'#fff'}},meta.icon),
+        h('div',{class:'grow',style:{minWidth:0}},h('p',{class:'trunc',style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},r.name+' · ¥'+fmt(r.amount)),h('p',{style:{fontSize:'11px',color:'#9B8EC4'}},periodLabelCN(r.period)+' · '+(off?'已停用':('下次 '+dateLabel(r.nextRun))))),
+        h('button',{class:'ib tap',onclick:()=>{ r.active=off; if(r.active&&r.nextRun<=Date.now())r.nextRun=advancePeriod(Date.now(),r.period); Store.save(); showToast(off?'已启用':'已停用'); reopen(); },style:{padding:'6px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:700,flexShrink:0,background:off?'#F0ECFF':'#EEF0F8',color:off?'#7C5CFC':'#9B8EC4'}},off?'启用':'停用'),
+        h('button',{class:'ib tap',onclick:()=>{ p.recurrings=p.recurrings.filter(x=>x.id!==r.id); Store.save(); showToast('已删除定期规则（历史账单保留）'); reopen(); },style:{width:'30px',height:'30px',borderRadius:'50%',flexShrink:0,background:'#FFF0F5'},html:I.trash({color:'#FF6B9D',size:14})}),
+      );})),
+    ):h('div',{style:{textAlign:'center',padding:'24px 8px'}},h('p',{style:{fontSize:'34px',marginBottom:'8px'}},'🔁'),h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},'还没有定期扣除'),h('p',{style:{fontSize:'12px',color:'#B0B4C8',lineHeight:1.6}},'记账时打开「定期扣除」并选择周期，到期就会自动记入账单')),
+    h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginTop:'14px',lineHeight:1.7}},'说明：打开 App 时会自动补记已到期的定期扣除；停用后不再自动记账，历史账单不受影响。'),
+  );
+  return sheet('定期扣除','到期自动记账 · 可停用或删除',body);
+}
+
+
+
+function openGenderSheet(){
+  const p=currentProfile();
+  const opts=[{v:'female',l:'👩 女'},{v:'male',l:'👨 男'},{v:'secret',l:'🙂 保密'}];
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',marginBottom:'12px',lineHeight:1.6}},'性别用于教练使用合适的称呼（姐妹 / 兄弟 / 朋友），可随时更改。'),
+    h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},opts.map(g=>{const on=(p.gender===g.v||(g.v==='secret'&&!p.gender));return h('button',{class:'ib tap',onclick:()=>{p.gender=g.v;Store.save();openOverlay(null);render();showToast('性别已更新');},style:{width:'100%',justifyContent:'space-between',padding:'14px 16px',borderRadius:'14px',fontSize:'15px',fontWeight:700,background:on?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:on?'#fff':'#3D3D5C'}},h('span',{},g.l),on?h('span',{class:'ib',html:I.check({color:'#fff',size:16})}):null);})),
+  );
+  return sheet('修改性别',null,body);
+}
+
+/* ---------- AI 设置 ---------- */
+function openAISettings(){
+  const a=Store.data.ai||defaultAI();
+  let enabled=a.enabled, vision=a.vision;
+  const body=h('div',{},
+    h('div',{class:'between',style:{padding:'12px 14px',borderRadius:'14px',background:'#F4F5FB',marginBottom:'10px'}},
+      h('div',{},h('p',{style:{fontSize:'14px',fontWeight:700,color:'#1A1A2E'}},'启用真实 AI 分析'),h('p',{style:{fontSize:'11px',color:'#9B8EC4'}},'关闭则用本地规则分析')),
+      h('button',{class:'switch',onclick:(e)=>{enabled=!enabled;const sw=e.currentTarget;sw.style.background=enabled?'#7C5CFC':'#E2E4EF';sw.firstChild.style.transform='translateX('+(enabled?'24px':'2px')+')';},style:{background:enabled?'#7C5CFC':'#E2E4EF'}},h('div',{class:'knob',style:{transform:'translateX('+(enabled?'24px':'2px')+')'}})),
+    ),
+    h('div',{class:'between',style:{padding:'12px 14px',borderRadius:'14px',background:'#F4F5FB',marginBottom:'14px'}},
+      h('div',{},h('p',{style:{fontSize:'14px',fontWeight:700,color:'#1A1A2E'}},'图片识别（vision）'),h('p',{style:{fontSize:'11px',color:'#9B8EC4'}},'拍照/相册用多模态模型读小票')),
+      h('button',{class:'switch',onclick:(e)=>{vision=!vision;const sw=e.currentTarget;sw.style.background=vision?'#7C5CFC':'#E2E4EF';sw.firstChild.style.transform='translateX('+(vision?'24px':'2px')+')';},style:{background:vision?'#7C5CFC':'#E2E4EF'}},h('div',{class:'knob',style:{transform:'translateX('+(vision?'24px':'2px')+')'}})),
+    ),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'API Key'),
+    h('input',{id:'ai-key',type:'text',value:a.apiKey||'',placeholder:'粘贴你的 DeepSeek API Key（sk-...）',class:'field',style:{marginBottom:'12px',fontSize:'13px'}}),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'接口地址 Base URL'),
+    h('input',{id:'ai-url',type:'text',value:a.baseUrl||'https://api.deepseek.com',class:'field',style:{marginBottom:'12px',fontSize:'13px'}}),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'模型 Model'),
+    h('input',{id:'ai-model',type:'text',value:a.model||'deepseek-chat',class:'field',style:{marginBottom:'14px',fontSize:'13px'}}),
+    h('div',{class:'row',style:{gap:'10px',marginBottom:'14px'}},
+      h('button',{class:'ib tap',onclick:()=>{ saveAI(enabled,vision); testAI(); },style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'13px',fontWeight:700,background:'#F0ECFF',color:'#7C5CFC'}},'测试连接'),
+      h('button',{class:'ib tap',onclick:()=>{ saveAI(enabled,vision); showToast('AI 设置已保存'); openOverlay(null); render(); },style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'13px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'保存'),
+    ),
+    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'rgba(255,183,71,.08)',border:'1px solid rgba(255,183,71,.25)'}},
+      h('p',{style:{fontSize:'11px',color:'#B08020',lineHeight:1.7}},'• Key 只保存在你本机数据库，不会上传到任何第三方（除你填的接口）。\n• DeepSeek 申请：platform.deepseek.com → API Keys（文本对话）。\n• 图片识别需「多模态(vision)」模型：DeepSeek 暂不支持，可填 OpenAI 兼容的视觉模型（如 gpt-4o-mini）的 baseUrl/model。\n• 双击本地文件常因跨域(CORS)失败；建议部署到网上用 https 打开（见「和朋友一起用」）。')),
+  );
+  openOverlay(sheet('AI 设置 · 接入真实大模型','把你的记账数据交给 AI 做个性化分析',body));
+}
+function saveAI(enabled,vision){
+  const a=Store.data.ai||(Store.data.ai=defaultAI());
+  a.enabled=!!enabled; a.vision=!!vision;
+  const k=$('#ai-key'), u=$('#ai-url'), m=$('#ai-model');
+  if(k)a.apiKey=k.value.trim(); if(u)a.baseUrl=(u.value.trim()||'https://api.deepseek.com'); if(m)a.model=(m.value.trim()||'deepseek-chat');
+  Store.save();
+}
+function testAI(){
+  if(!aiConfigured()){ showToast('请先填写并启用 API Key'); return; }
+  showToast('正在测试连接…');
+  aiReply(currentProfile(),[{role:'user',text:'用一句话打个招呼'}]).then(()=>showToast('✅ 连接成功，AI 已就绪')).catch(e=>showToast('❌ 失败：'+(e&&e.message?e.message.slice(0,40):'未知错误')));
+}
+
+/* ---------- 本地数据库 & 备份 ---------- */
+function openDBSheet(){
+  const p=currentProfile();
+  const userCount=Object.keys(Store.data.users).length;
+  const txN=p.transactions.length, goalN=p.goals.length, contribN=p.contributions.length, memN=p.memories.length;
+  const dbType=(typeof indexedDB!=='undefined'&&_idb)?'IndexedDB（MoodLedgerDB）':'localStorage（兜底）';
+  const stat=(label,val,color)=>h('div',{style:{flex:1,textAlign:'center',padding:'14px 6px',borderRadius:'14px',background:'#F8F9FE'}},h('p',{style:{fontSize:'22px',fontWeight:900,color:color}},val),h('p',{style:{fontSize:'11px',color:'#9B8EC4',marginTop:'2px'}},label));
+  const body=h('div',{},
+    h('div',{class:'row',style:{gap:'8px',padding:'10px 14px',borderRadius:'12px',background:'rgba(78,205,196,.1)',marginBottom:'14px'}},h('span',{class:'ib',html:I.check({color:'#2BAD9E',size:16})}),h('p',{style:{fontSize:'12px',color:'#2BAD9E',fontWeight:700}},'数据库已就绪：'+dbType)),
+    h('div',{class:'row',style:{gap:'10px',marginBottom:'10px'}},stat('账单',txN,'#7C5CFC'),stat('目标',goalN,'#FF6B9D'),stat('克制记录',contribN,'#4ECDC4')),
+    h('div',{class:'row',style:{gap:'10px',marginBottom:'16px'}},stat('AI 记忆',memN,'#FFB347'),stat('本机用户',userCount,'#9B7AFF'),stat('用户ID','#'+(p.id||'—'),'#5AB0E0')),
+    h('button',{class:'ib tap',onclick:()=>exportBackup(),style:{width:'100%',padding:'13px',borderRadius:'12px',gap:'8px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'10px'}},h('span',{class:'ib',html:I.download({color:'#fff',size:18})}),'导出数据备份（JSON）'),
+    h('p',{style:{fontSize:'11px',color:'#B0B4C8',lineHeight:1.7}},'数据保存在本机浏览器的数据库中，关掉再打开仍在；清除浏览器数据会丢失，建议定期导出备份。换设备/多人共享需要云端数据库（见「和朋友一起用」）。'),
+  );
+  openOverlay(sheet('本地数据库与备份','你的账本存在哪里、有多少条',body));
+}
+function exportBackup(){
+  try{
+    const p=currentProfile();
+    const data={exportedAt:new Date().toISOString(),app:'MoodLedger',user:{id:p.id,phone:p.phone,nickname:p.nickname},profile:p};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='MoodLedger备份_'+(p.nickname||p.id)+'_'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+    showToast('备份已导出');
+  }catch(e){ showToast('导出失败：'+(e&&e.message||'')); }
+}
+
+/* ---------- 账单 CSV 导入 / 导出 ---------- */
+function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?('"'+v.replace(/"/g,'""')+'"'):v; }
+function exportCSV(){
+  try{
+    const p=currentProfile();
+    const rows=[['日期','名称','金额','类型','动机','心情']];
+    [...p.transactions].sort((a,b)=>a.ts-b.ts).forEach(t=>{ const d=new Date(t.ts); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); rows.push([ds,t.name,t.amount,t.category||'',t.motivation||'',t.mood==='great'?'真香':t.mood==='regret'?'后悔':'']); });
+    const csv='﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='MoodLedger账单_'+new Date().toISOString().slice(0,10)+'.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+    showToast('已导出 '+(rows.length-1)+' 笔账单');
+  }catch(e){ showToast('导出失败：'+(e&&e.message||'')); }
+}
+function parseCSV(text){
+  const rows=[]; let row=[],cur='',q=false; text=text.replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c==='\r'){} else cur+=c; }
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r=>r.length&&r.some(x=>x!==''));
+}
+function importCSVText(text){
+  const p=currentProfile(); const rows=parseCSV(text);
+  if(rows.length<2){ showToast('CSV 没有数据行'); return; }
+  const head=rows[0].map(s=>s.trim());
+  const idx=(names)=>{ for(const n of names){ const i=head.indexOf(n); if(i>=0)return i; } return -1; };
+  const iDate=idx(['日期','date','时间']), iName=idx(['名称','备注','name','商品']), iAmt=idx(['金额','amount','价格']), iType=idx(['类型','分类','category']), iMot=idx(['动机','motivation']), iMood=idx(['心情','评价','mood']);
+  if(iAmt<0){ showToast('未找到「金额」列'); return; }
+  let n=0;
+  rows.slice(1).forEach(r=>{
+    const amt=parseFloat((r[iAmt]||'').replace(/[^0-9.]/g,'')); if(!amt||amt<=0) return;
+    let ts=Date.now(); if(iDate>=0&&r[iDate]){ const d=new Date(r[iDate].replace(/\//g,'-')); if(!isNaN(d.getTime())) ts=d.getTime(); }
+    const cat=(iType>=0&&r[iType]&&r[iType].trim())||'其他'; const meta=catMeta(cat);
+    const moodRaw=(iMood>=0?(r[iMood]||'').trim():''); const mood=/真香|great|好/.test(moodRaw)?'great':/后悔|regret|差/.test(moodRaw)?'regret':null;
+    p.transactions.push({id:'t'+Date.now()+Math.floor(Math.random()*1e4),type:'spend',name:(iName>=0&&r[iName]&&r[iName].trim())||cat,amount:amt,category:cat,catIcon:meta.icon,catColor:meta.color,motivation:(iMot>=0&&r[iMot]&&r[iMot].trim())||'刚需维生',mood,recurring:false,period:null,receipt:null,ts});
+    n++;
+  });
+  Store.save(); openOverlay(null); render(); showToast('成功导入 '+n+' 笔账单');
+}
+function openCSVSheet(){
+  const p=currentProfile();
+  const body=h('div',{},
+    h('div',{class:'row',style:{gap:'10px',marginBottom:'14px'}},
+      h('button',{class:'ib tap',onclick:exportCSV,style:{flex:1,flexDirection:'column',gap:'6px',padding:'16px',borderRadius:'14px',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',color:'#fff'}},h('span',{class:'ib',html:I.download({color:'#fff',size:22})}),h('span',{style:{fontSize:'13px',fontWeight:800}},'导出 CSV'),h('span',{style:{fontSize:'10px',opacity:.85}},p.transactions.length+' 笔账单')),
+      h('button',{class:'ib tap',onclick:()=>{const el=$('#csv-file');if(el)el.click();},style:{flex:1,flexDirection:'column',gap:'6px',padding:'16px',borderRadius:'14px',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.clip({color:'#7C5CFC',size:22})}),h('span',{style:{fontSize:'13px',fontWeight:800}},'导入 CSV'),h('span',{style:{fontSize:'10px',opacity:.85}},'从文件追加')),
+    ),
+    h('input',{id:'csv-file',type:'file',accept:'.csv,text/csv',style:{display:'none'},onchange:(e)=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const rd=new FileReader();rd.onload=()=>importCSVText(String(rd.result));rd.onerror=()=>showToast('读取失败');rd.readAsText(f,'utf-8');}}),
+    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},
+      h('p',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700,marginBottom:'6px'}},'CSV 列格式'),
+      h('p',{style:{fontSize:'11px',color:'#7B6FAE',lineHeight:1.8,whiteSpace:'pre-line'}},'日期, 名称, 金额, 类型, 动机, 心情\n例：2026-06-28, 星巴克, 38, 餐饮, 悦己充电, 真香\n\n• 只有「金额」是必填，其它列可空或缺失\n• 日期支持 2026-06-28 或 2026/06/28，缺省为今天\n• 心情填「真香 / 后悔」，可留空\n• 导入为「追加」，不会覆盖已有账单\n• 可先点「导出 CSV」拿到带表头的模板'),
+    ),
+  );
+  openOverlay(sheet('账单导入与导出（CSV）','与 Excel / 其它记账软件互通',body));
+}
+
+/* ---------- 评价墙筛选（时间 + 类别） ---------- */
+function openReviewFilter(){
+  const p=currentProfile(), r=UI.review;
+  const cats=['全部'].concat(Array.from(new Set(p.transactions.map(t=>t.category||'其他'))));
+  const times=[{v:'all',l:'全部'},{v:'month',l:'本月'},{v:'last',l:'上月'},{v:'3m',l:'近3月'}];
+  const chip=(label,on,onclick)=>h('button',{class:'tap',onclick,style:{flexShrink:0,padding:'8px 14px',borderRadius:'999px',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:on?'#fff':'#6B7280',boxShadow:on?'0 3px 10px rgba(124,92,252,.25)':'none'}},label);
+  const body=h('div',{},
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'时间范围'),
+    h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'18px'}},times.map(t=>chip(t.l,r.timeRange===t.v,()=>{r.timeRange=t.v;openOverlay(openReviewFilter());}))),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'消费类别'),
+    h('div',{class:'row noscroll',style:{gap:'8px',flexWrap:'wrap',marginBottom:'20px'}},cats.map(c=>chip(c==='全部'?'全部':(catMeta(c).icon+' '+c),r.category===c,()=>{r.category=c;openOverlay(openReviewFilter());}))),
+    h('div',{class:'row',style:{gap:'10px'}},
+      h('button',{class:'ib tap',onclick:()=>{r.timeRange='all';r.category='全部';openOverlay(openReviewFilter());},style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#F4F5FB'}},'重置'),
+      h('button',{class:'ib tap',onclick:()=>{openOverlay(null);render();},style:{flex:2,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'查看结果'),
+    ),
+  );
+  return sheet('筛选账单','按时间和消费类别筛选',body);
+}
+
+/* ---------- 和朋友一起用（方案建议） ---------- */
+function openShareSheet(){
+  const item=(emoji,title,desc,tag,tagColor)=>h('div',{style:{padding:'14px',borderRadius:'14px',background:'#F8F9FE',marginBottom:'10px'}},
+    h('div',{class:'row',style:{gap:'8px',marginBottom:'6px'}},h('span',{style:{fontSize:'18px'}},emoji),h('p',{style:{fontSize:'14px',fontWeight:800,color:'#1A1A2E',flex:1}},title),tag?h('span',{style:{fontSize:'9px',padding:'2px 8px',borderRadius:'999px',fontWeight:700,color:'#fff',background:tagColor}},tag):null),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',lineHeight:1.7}},desc));
+  const body=h('div',{},
+    item('📤','① 直接分享文件（最简单）','把 MoodLedger.html 发给朋友，各自双击使用。每人数据存在各自电脑，互不打通。适合只想"人手一份"。','零成本','#4ECDC4'),
+    item('🌐','② 放到网上，发链接（推荐）','把这个网页传到免费静态托管（GitHub Pages / Vercel / Netlify / 腾讯云COS），朋友打开网址即可用，还能"添加到主屏幕"像 App 一样。好处：真实 AI（https 不再被跨域拦）也能正常用。仍是各自的本地数据。','推荐','#7C5CFC'),
+    item('👥','③ 多人共享/同步（需要后端）','想要"同一份账本一起记"或"换手机数据还在"，需要云端账号+数据库。最省力是用 BaaS：Supabase / LeanCloud / 微信云开发 / Firebase——把现在的本地存取换成云数据库、加真正的登录，前端基本不大改。','进阶','#FF6B9D'),
+    item('💡','给你的建议','先用方案②把它发出去给朋友试用（半天搞定、还能顺便用上真实 AI）；如果大家用顺手、确实想合账或跨设备同步，我再帮你按方案③接 Supabase 做云端版本。','',''),
+  );
+  openOverlay(sheet('和朋友一起用','从"各用各的"到"一起记账"的几种方式',body));
+}
+
+
+/* ============================================================================
+   SCREEN · ANALYSIS  (消费分析 · 真实数据)
+============================================================================ */
+const RANGE_LABELS={current:'本月',last:'上月',last3:'近3月',all:'全部'};
+function monthBuckets(p,year,month){
+  const sums={},list={};
+  p.transactions.forEach(t=>{ const d=new Date(t.ts); if(d.getFullYear()===year&&d.getMonth()+1===month){ const day=d.getDate(); sums[day]=(sums[day]||0)+t.amount; (list[day]=list[day]||[]).push(t); } });
+  return {sums,list};
+}
+function dayDetailSheet(){
+  const a=UI.analysis, p=currentProfile(), {day,month,year}=a.detailDay;
+  const {list}=monthBuckets(p,year,month);
+  const txs=list[day]||[];
+  const total=txs.reduce((s,t)=>s+t.amount,0);
+  const catMap={};
+  txs.forEach(t=>{const c=t.category||'其他';if(!catMap[c])catMap[c]={amount:0,color:catMeta(c).color,icon:catMeta(c).icon};catMap[c].amount+=t.amount;});
+  const pieData=Object.entries(catMap).map(([name,v])=>({name,value:v.amount,color:v.color,icon:v.icon}));
+  const allCats=['全部',...Object.keys(catMap)];
+  if(!allCats.includes(a.detailCat))a.detailCat='全部';
+  const filtered=a.detailCat==='全部'?txs:txs.filter(t=>t.category===a.detailCat);
+  const moodLabel=(m)=>m==='great'?'😊 真香':m==='regret'?'😰 后悔':null;
+  const moodStyle=(m)=>m==='great'?{background:'rgba(78,205,196,.12)',color:'#2BAD9E'}:m==='regret'?{background:'rgba(255,107,157,.12)',color:'#E8527A'}:{};
+  const close=()=>{a.detailDay=null;openOverlay(null);};
+  return h('div',{},
+    h('div',{class:'backdrop',onclick:close}),
+    h('div',{class:'sheet',style:{maxHeight:'85%'}},
+      h('div',{class:'handle'}),
+      h('div',{class:'between',style:{padding:'12px 20px 8px',flexShrink:0}},h('div',{},h('p',{style:{fontSize:'16px',fontWeight:800,color:'#1A1A2E'}},month+'月'+day+'日 消费明细'),h('p',{style:{fontSize:'11px',color:'#9B8EC4',marginTop:'2px'}},'共 '+txs.length+' 笔 · 合计 ¥'+fmt(total))),h('button',{class:'ib tap',onclick:close,style:{width:'30px',height:'30px',borderRadius:'50%',background:'#EEF0F8'},html:I.x({color:'#9B8EC4',size:14})})),
+      h('div',{class:'noscroll',style:{flex:1,overflowY:'auto',padding:'0 16px 24px'}},
+        txs.length===0?h('div',{style:{textAlign:'center',padding:'40px 0',color:'#C8CBD8',fontSize:'13px'}},'这一天没有消费记录'):h('div',{},
+          h('div',{style:{background:'#fff',borderRadius:'20px',padding:'16px',marginBottom:'12px',boxShadow:'0 2px 10px rgba(124,92,252,.07)'}},
+            h('p',{style:{fontSize:'12px',fontWeight:700,color:'#1A1A2E',marginBottom:'12px'}},'消费构成'),
+            h('div',{class:'row',style:{gap:'12px'}},
+              h('div',{style:{position:'relative',flexShrink:0,width:'110px',height:'110px'}},h('div',{html:donutSVG(pieData,total,110)}),h('div',{style:{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',textAlign:'center'}},h('p',{style:{fontSize:'13px',fontWeight:900,color:'#1A1A2E',lineHeight:1}},'¥'+fmt(total)),h('p',{style:{fontSize:'9px',color:'#B0B4C8',marginTop:'1px'}},'合计'))),
+              h('div',{class:'grow',style:{display:'flex',flexDirection:'column',gap:'6px'}},pieData.map(d=>h('div',{class:'between'},h('div',{class:'row',style:{gap:'6px'}},h('div',{style:{width:'8px',height:'8px',borderRadius:'50%',background:d.color,flexShrink:0}}),h('span',{style:{fontSize:'11px',color:'#3D3D5C',fontWeight:600}},d.icon+' '+d.name)),h('span',{style:{fontSize:'11px',color:d.color,fontWeight:700}},'¥'+fmt(d.value))))),
+            ),
+          ),
+          h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'10px',paddingBottom:'2px'}},allCats.map(c=>h('button',{class:'tap',onclick:()=>{a.detailCat=c;openOverlay(dayDetailSheet());},style:{flexShrink:0,padding:'5px 14px',borderRadius:'20px',fontSize:'11px',fontWeight:700,whiteSpace:'nowrap',background:a.detailCat===c?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#EEF0F8',color:a.detailCat===c?'#fff':'#8B8FA8'}},c))),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}},filtered.map(tx=>h('div',{class:'anim-x tap',onclick:()=>openOverlay(openTxEdit(tx.id)),style:{background:'#fff',borderRadius:'16px',padding:'12px 14px',display:'flex',alignItems:'center',gap:'12px',cursor:'pointer',boxShadow:'0 1px 6px rgba(124,92,252,.06)',borderLeft:'3px solid '+catMeta(tx.category).color}},h('div',{class:'ib',style:{width:'38px',height:'38px',borderRadius:'12px',background:'#F8F9FE',fontSize:'20px',flexShrink:0}},tx.catIcon||catMeta(tx.category).icon),h('div',{class:'grow'},h('p',{class:'trunc',style:{fontSize:'13px',fontWeight:700,color:'#1A1A2E',marginBottom:'2px'}},tx.name),h('div',{class:'row',style:{gap:'6px'}},h('span',{style:{fontSize:'10px',padding:'2px 8px',borderRadius:'10px',background:catMeta(tx.category).color+'15',color:catMeta(tx.category).color,fontWeight:600}},(tx.catIcon||catMeta(tx.category).icon)+' '+tx.category),tx.mood?h('span',{style:Object.assign({fontSize:'10px',padding:'2px 8px',borderRadius:'10px',fontWeight:700},moodStyle(tx.mood))},moodLabel(tx.mood)):null)),h('p',{style:{fontSize:'15px',fontWeight:800,color:'#1A1A2E',flexShrink:0}},'¥'+fmt(tx.amount)),h('span',{class:'ib',style:{flexShrink:0,marginLeft:'2px'},html:I.edit({color:'#C8CBD8',size:14})})))),
+        ),
+      ),
+    ),
+  );
+}
+function monthTotalFor(p,year,month,cat){ const {sums,list}=monthBuckets(p,year,month); if(!cat||cat==='全部'){ return Object.values(sums).reduce((s,v)=>s+v,0); } let t=0; Object.values(list).forEach(arr=>arr.forEach(x=>{ if((x.category||'其他')===cat) t+=x.amount; })); return t; }
+function yearTrend(p,year,cat){ const now=new Date(); const arr=[]; for(let m=1;m<=12;m++){ arr.push({m,amount:monthTotalFor(p,year,m,cat),isCur:(now.getFullYear()===year&&now.getMonth()+1===m)}); } return arr; }
+function calendarCard(){
+  const a=UI.analysis, p=currentProfile();
+  if(!a.calMode) a.calMode='day';
+  const now=new Date();
+  const toggle=h('div',{class:'seg',style:{width:'auto'}},[{id:'day',l:'按月'},{id:'year',l:'按年'}].map(t=>h('button',{class:a.calMode===t.id?'on':'',style:{padding:'4px 14px'},onclick:()=>{a.calMode=t.id;render();}},t.l)));
+
+  if(a.calMode==='year'){
+    const months=Array.from({length:12},(_,i)=>({m:i+1,tot:monthTotalFor(p,a.viewYear,i+1)}));
+    const yearTotal=months.reduce((s,x)=>s+x.tot,0);
+    const prevY=()=>{a.viewYear--;render();}, nextY=()=>{a.viewYear++;render();};
+    return h('div',{style:{background:'#fff',borderRadius:'20px',padding:'16px',boxShadow:'0 2px 12px rgba(124,92,252,.08)'}},
+      h('div',{class:'between',style:{marginBottom:'12px'}},toggle,h('div',{style:{flex:1}})),
+      h('div',{class:'between',style:{marginBottom:'14px'}},
+        h('button',{class:'ib tap',onclick:prevY,style:{width:'28px',height:'28px',borderRadius:'50%',background:'#F4F5FB'},html:I.chevL({color:'#7C5CFC',size:16})}),
+        h('div',{style:{textAlign:'center'}},h('p',{style:{fontSize:'14px',fontWeight:800,color:'#1A1A2E'}},a.viewYear+'年'),yearTotal>0?h('p',{style:{fontSize:'10px',color:'#9B8EC4',marginTop:'1px'}},'全年消费 ¥'+fmt(yearTotal)):null),
+        h('button',{class:'ib tap',onclick:nextY,style:{width:'28px',height:'28px',borderRadius:'50%',background:'#F4F5FB'},html:I.chevR({color:'#7C5CFC',size:16})}),
+      ),
+      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px'}},months.map(x=>{
+        const cur=(now.getFullYear()===a.viewYear&&now.getMonth()+1===x.m); const high=x.tot>3000, mid=x.tot>1000;
+        return h('button',{class:'tap',onclick:()=>{a.viewMonth=x.m;a.calMode='day';render();},style:{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'14px 6px',borderRadius:'14px',background:x.tot>0?'rgba(124,92,252,.06)':'#F8F9FE',border:cur?'1.5px solid #FFB347':'1.5px solid transparent'}},
+          h('span',{style:{fontSize:'17px',fontWeight:800,color:cur?'#C08820':'#1A1A2E',fontFamily:"'Plus Jakarta Sans',sans-serif"}},x.m+'月'),
+          h('span',{style:{fontSize:'11px',marginTop:'4px',fontWeight:700,color:high?'#FF4D6D':mid?'#FFB347':x.tot>0?'#7C5CFC':'#C8CBD8'}},x.tot>0?('¥'+fmt(x.tot)):'·'),
+        );
+      })),
+      h('p',{style:{textAlign:'center',fontSize:'9px',color:'#B0B4C8',marginTop:'12px'}},'点某个月 → 查看当月每日明细'),
+    );
+  }
+
+  const {sums,list}=monthBuckets(p,a.viewYear,a.viewMonth);
+  const firstDay=new Date(a.viewYear,a.viewMonth-1,1);
+  const daysInMonth=new Date(a.viewYear,a.viewMonth,0).getDate();
+  const offset=(firstDay.getDay()+6)%7;
+  const cells=[]; for(let i=0;i<offset;i++)cells.push({day:null});
+  for(let d=1;d<=daysInMonth;d++)cells.push({day:d,amount:sums[d]||0});
+  while(cells.length%7!==0)cells.push({day:null});
+  const todayD=now.getDate(), isCurMonth=(now.getFullYear()===a.viewYear&&now.getMonth()+1===a.viewMonth);
+  const monthTotal=Object.values(sums).reduce((s,v)=>s+v,0);
+  const prev=()=>{if(a.viewMonth===1){a.viewMonth=12;a.viewYear--;}else a.viewMonth--;render();};
+  const next=()=>{if(a.viewMonth===12){a.viewMonth=1;a.viewYear++;}else a.viewMonth++;render();};
+  return h('div',{style:{background:'#fff',borderRadius:'20px',padding:'16px',boxShadow:'0 2px 12px rgba(124,92,252,.08)'}},
+    h('div',{class:'between',style:{marginBottom:'12px'}},toggle,h('div',{style:{flex:1}})),
+    h('div',{class:'between',style:{marginBottom:'12px'}},h('button',{class:'ib tap',onclick:prev,style:{width:'28px',height:'28px',borderRadius:'50%',background:'#F4F5FB'},html:I.chevL({color:'#7C5CFC',size:16})}),h('div',{style:{textAlign:'center'}},h('button',{onclick:()=>{a.calMode='year';render();},style:{fontSize:'14px',fontWeight:800,color:'#1A1A2E'}},a.viewYear+'年'+a.viewMonth+'月'),monthTotal>0?h('p',{style:{fontSize:'10px',color:'#9B8EC4',marginTop:'1px'}},'本月消费 ¥'+fmt(monthTotal)):null),h('button',{class:'ib tap',onclick:next,style:{width:'28px',height:'28px',borderRadius:'50%',background:'#F4F5FB'},html:I.chevR({color:'#7C5CFC',size:16})})),
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:'4px'}},WEEKDAYS.map(d=>h('p',{style:{textAlign:'center',fontSize:'10px',color:'#B0B4C8',fontWeight:600}},d))),
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',rowGap:'4px'}},cells.map(cell=>{
+      if(!cell.day)return h('div',{});
+      const isToday=cell.day===todayD&&isCurMonth, isHigh=cell.amount>300, isMed=cell.amount>100, hasSpend=cell.amount>0, hasTx=!!list[cell.day];
+      return h('button',{class:'tap',onclick:()=>{if(hasTx){a.detailDay={day:cell.day,month:a.viewMonth,year:a.viewYear};a.detailCat='全部';openOverlay(dayDetailSheet());}},style:{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0',background:'transparent',cursor:hasTx?'pointer':'default'}},h('div',{class:'ib',style:{width:'28px',height:'28px',borderRadius:'50%',background:isToday?'rgba(255,179,71,.15)':hasTx?'rgba(124,92,252,.06)':'transparent',border:isToday?'1.5px solid #FFB347':hasTx?'1px solid rgba(124,92,252,.18)':'none'}},h('span',{style:{fontSize:'12px',fontWeight:isToday?800:500,color:isToday?'#C08820':'#3D3D5C'}},cell.day)),h('span',{style:{fontSize:'9px',marginTop:'2px',color:isHigh?'#FF4D6D':isMed?'#FFB347':'#9B8EC4',fontWeight:isHigh?700:400}},hasSpend?cell.amount:'·'));
+    })),
+    h('div',{class:'row',style:{gap:'10px',marginTop:'12px',paddingTop:'10px',borderTop:'1px solid rgba(124,92,252,.06)'}},[{c:'#FF4D6D',l:'高 >¥300'},{c:'#FFB347',l:'中 ¥100-300'},{c:'#9B8EC4',l:'普通'}].map(l=>h('div',{class:'row',style:{gap:'4px'}},h('div',{style:{width:'6px',height:'6px',borderRadius:'50%',background:l.c}}),h('span',{style:{fontSize:'9px',color:'#B0B4C8'}},l.l))),h('span',{style:{marginLeft:'auto',fontSize:'9px',color:'#B0B4C8'}},'点圆点看明细')),
+  );
+}
+ROUTES['/analysis']=function(){
+  const p=currentProfile(), a=UI.analysis;
+  const hasData=p.transactions.length>0;
+  const periodMonth=(a.calMode==='year')?null:a.viewMonth;
+  const periodLabel=(a.calMode==='year')?(a.viewYear+'年'):(a.viewYear+'年'+a.viewMonth+'月');
+  const ca=categoryAggP(p,a.viewYear,periodMonth);
+  const md=moodAggP(p,a.viewYear,periodMonth);
+  const trend=yearTrend(p,a.viewYear,a.trendCat), maxM=Math.max(1,...trend.map(m=>m.amount)), yearTotal=trend.reduce((s,m)=>s+m.amount,0);
+  const trendCats=['全部'].concat(Array.from(new Set(p.transactions.filter(t=>new Date(t.ts).getFullYear()===a.viewYear).map(t=>t.category||'其他'))));
+  if(trendCats.indexOf(a.trendCat)<0) a.trendCat='全部';
+  const ptx=p.transactions.filter(t=>inPeriod(t.ts,a.viewYear,periodMonth));
+  const impulse=ptx.filter(t=>t.motivation==='压力发泄'||t.mood==='regret').length;
+  const pGreat=ptx.filter(t=>t.mood==='great').reduce((s,t)=>s+t.amount,0);
+  const pRegret=ptx.filter(t=>t.mood==='regret').reduce((s,t)=>s+t.amount,0);
+  const pRational=(pGreat+pRegret)>0?Math.round(pGreat/(pGreat+pRegret)*100):null;
+  const maxSingle=ptx.reduce((m,t)=>Math.max(m,t.amount),0);
+  const savedPeriod=p.contributions.filter(c=>inPeriod(c.ts,a.viewYear,periodMonth)).reduce((s,c)=>s+c.amount,0);
+  if(a.detailDay) setTimeout(()=>{ if(a.detailDay&&!$('#overlay').firstChild) openOverlay(dayDetailSheet()); },0);
+
+  return h('div',{class:'page'},
+    h('div',{class:'px5 head-grad-2',style:{paddingTop:'58px',paddingBottom:'16px'}},h('h1',{style:{fontSize:'20px',color:'#1A1A2E',fontWeight:900}},'消费分析')),
+    h('div',{class:'px5',style:{marginTop:'12px',display:'flex',flexDirection:'column',gap:'16px'}},
+      h('div',{class:'anim-up'},calendarCard()),
+
+      h('div',{class:'card anim-up d2',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:'4px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'消费洞察'),h('div',{class:'seg',style:{width:'auto'}},[{id:'category',label:'分类'},{id:'mood',label:'心情'}].map(t=>h('button',{class:a.tab===t.id?'on':'',style:{padding:'4px 12px'},onclick:()=>{a.tab=t.id;render();}},t.label)))),
+        h('p',{style:{fontSize:'11px',color:'#9B8EC4',marginBottom:'12px'}},'📅 跟随上方日历 · '+periodLabel+(ca.total>0?('（合计 ¥'+fmt(ca.total)+'）'):'')),
+        !hasData?h('div',{style:{textAlign:'center',padding:'24px 8px'}},h('p',{style:{fontSize:'32px',marginBottom:'8px'}},'📊'),h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},'还没有可分析的数据'),h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'记几笔消费后，这里会自动生成分类与心情洞察')):(
+          a.tab==='category'?(ca.arr.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},ca.arr.map(c=>h('div',{class:'anim-x'},h('div',{class:'between',style:{marginBottom:'4px'}},h('div',{class:'row',style:{gap:'8px'}},h('span',{style:{fontSize:'16px'}},c.icon),h('span',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700}},c.name)),h('div',{class:'row',style:{gap:'8px'}},h('span',{style:{fontSize:'11px',color:'#9B8EC4'}},'¥'+fmt(c.amount)),h('span',{style:{fontSize:'10px',color:c.color,fontWeight:700}},c.pct+'%'))),h('div',{style:{height:'8px',borderRadius:'999px',overflow:'hidden',background:'#EEF0F8'}},h('div',{style:{height:'100%',borderRadius:'999px',width:c.pct+'%',background:c.color,animation:'grow-w .6s ease both'}})))) ):h('p',{style:{fontSize:'12px',color:'#B0B4C8',textAlign:'center',padding:'16px'}},periodLabel+'没有消费记录'))
+          :(md.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},h('p',{style:{fontSize:'11px',color:'#B0B4C8'}},'绿色=真香 · 粉色=后悔'),md.map(c=>{const total=c.great+c.regret,gp=total>0?Math.round((c.great/total)*100):0;return h('div',{class:'anim-x'},h('div',{class:'between',style:{marginBottom:'6px'}},h('div',{class:'row',style:{gap:'8px'}},h('span',{style:{fontSize:'16px'}},c.icon),h('span',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700}},c.name)),h('div',{class:'row',style:{gap:'8px',fontSize:'10px'}},c.great>0?h('span',{style:{color:'#4ECDC4',fontWeight:700}},'真香 ¥'+fmt(c.great)):null,c.regret>0?h('span',{style:{color:'#FF6B9D',fontWeight:700}},'后悔 ¥'+fmt(c.regret)):null)),h('div',{class:'row',style:{height:'10px',borderRadius:'999px',overflow:'hidden',background:'#EEF0F8'}},h('div',{style:{height:'100%',width:gp+'%',background:'#4ECDC4'}}),h('div',{style:{height:'100%',width:(100-gp)+'%',background:'#FF6B9D',opacity:.7}})));})):h('div',{style:{textAlign:'center',padding:'20px 8px'}},h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},periodLabel+'还没有心情评价'),h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'去「评价墙」给账单标记真香 / 后悔吧')))
+        ),
+      ),
+
+      hasData?h('div',{class:'anim-up d3',style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},[
+        {label:'冲动消费',val:impulse+' 次',sub:periodLabel+(impulse>0?' · 含压力/后悔':' · 保持得好'),color:'#FF6B9D',bg:'#FFF0F5',icon:'⚡'},
+        {label:'理性消费占比',val:pRational!=null?pRational+'%':'—',sub:pRational!=null?(periodLabel+' 已评价'):'去评价墙打分',color:'#4ECDC4',bg:'#F0FFFE',icon:'🧠'},
+        {label:'最大单笔消费',val:'¥'+fmt(maxSingle),sub:periodLabel,color:'#7C5CFC',bg:'#F5F0FF',icon:'💸'},
+        {label:'已省下',val:'¥'+fmt(savedPeriod),sub:periodLabel+' · 存入许愿池',color:'#FFB347',bg:'#FFF8EE',icon:'🌟'},
+      ].map(st=>h('div',{style:{borderRadius:'16px',padding:'16px',background:st.bg}},h('div',{class:'row',style:{gap:'6px',marginBottom:'4px'}},h('span',{style:{fontSize:'16px'}},st.icon),h('p',{style:{fontSize:'11px',color:'#9B8EC4'}},st.label)),h('p',{style:{fontSize:'20px',color:st.color,fontWeight:900}},st.val),h('p',{style:{fontSize:'10px',color:'#B0B4C8',marginTop:'2px'}},st.sub)))):null,
+
+      h('div',{class:'card anim-up d4',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:'12px',alignItems:'flex-start'}},h('div',{},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},a.viewYear+'年 月度趋势'),h('p',{style:{fontSize:'10px',color:'#9B8EC4',fontWeight:600,marginTop:'2px'}},'📅 跟随上方日历 · '+(a.trendCat==='全部'?'全部类别':a.trendCat)+' 全年 ¥'+fmt(yearTotal))),h('p',{style:{fontSize:'11px',color:'#9B8EC4'},html:'月均 <b style="color:#7C5CFC">¥'+fmt(yearTotal/12)+'</b>'})),
+        h('div',{class:'row noscroll',style:{gap:'6px',overflowX:'auto',marginBottom:'10px',paddingBottom:'2px'}},trendCats.map(c=>h('button',{class:'tap',onclick:()=>{a.trendCat=c;render();},style:{flexShrink:0,padding:'5px 12px',borderRadius:'999px',fontSize:'11px',fontWeight:700,whiteSpace:'nowrap',background:a.trendCat===c?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:a.trendCat===c?'#fff':'#8B8FA8'}},c==='全部'?'全部':(catMeta(c).icon+' '+c)))),
+        h('div',{style:{height:'150px',display:'flex',alignItems:'flex-end',gap:'3px',paddingTop:'8px'}},trend.map(m=>{const cur=m.isCur;const lab=m.amount<=0?'':(m.amount>=10000?(m.amount/10000).toFixed(1)+'万':m.amount>=1000?(m.amount/1000).toFixed(1)+'k':String(m.amount));return h('div',{class:'grow tap',onclick:()=>{a.viewMonth=m.m;a.calMode='day';render();},style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',height:'100%',justifyContent:'flex-end',cursor:'pointer'},title:a.viewYear+'年'+m.m+'月 ¥'+fmt(m.amount)},h('span',{style:{fontSize:'7px',fontWeight:700,color:cur?'#2BAD9E':'#9B8EC4',whiteSpace:'nowrap',lineHeight:1}},lab),h('div',{style:{width:'100%',maxWidth:'20px',borderRadius:'4px 4px 0 0',background:cur?'#4ECDC4':'#7C5CFC',opacity:cur?.95:.5,height:Math.max(2,(m.amount/maxM)*100)+'px',transition:'height .5s ease'}}),h('span',{style:{fontSize:'9px',color:cur?'#2BAD9E':'#C8CBD8',fontWeight:cur?700:400}},m.m))})),
+        h('p',{style:{textAlign:'center',fontSize:'9px',color:'#B0B4C8',marginTop:'8px'}},'点某月柱子 → 查看当月日历与明细'),
+      ),
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · BUDGET  (欲望许愿池 · 真实目标)
+============================================================================ */
+function goalStats(p,goal){
+  const contribs=p.contributions.filter(c=>c.goalId===goal.id).sort((a,b)=>b.ts-a.ts);
+  const months={}; contribs.forEach(c=>{months[ym(c.ts)]=1;});
+  const monthsActive=Math.max(1,Object.keys(months).length);
+  const contribTotal=contribs.reduce((s,c)=>s+c.amount,0);
+  const avgMonthly=contribTotal>0?Math.round(contribTotal/monthsActive):Math.max(100,Math.round(goal.target/12));
+  const remaining=Math.max(0,goal.target-goal.current);
+  const monthsLeft=Math.max(1,Math.ceil(remaining/avgMonthly));
+  const savedThisMonth=contribs.filter(c=>sameMonth(c.ts)).reduce((s,c)=>s+c.amount,0);
+  return {contribs,avgMonthly,remaining,monthsLeft,savedThisMonth,pct:Math.min(100,Math.round((goal.current/goal.target)*1000)/10)};
+}
+ROUTES['/budget']=function(params){
+  const p=currentProfile(), b=UI.budget;
+  if(params&&params.goalId)b.goalId=params.goalId;
+  if((b.goalId===null||!p.goals.find(g=>g.id===b.goalId))&&p.goals.length)b.goalId=p.goals[0].id;
+  const goal=p.goals.find(g=>g.id===b.goalId)||null;
+
+  const header=h('div',{class:'px5 head-grad',style:{paddingTop:'58px',paddingBottom:'16px'}},
+    h('div',{class:'between',style:{alignItems:'flex-start',marginBottom:p.goals.length?'16px':'0'}},h('div',{},h('h1',{style:{fontSize:'24px',color:'#1A1A2E',fontWeight:900,marginBottom:'2px'}},'欲望许愿池 🌊'),h('p',{style:{fontSize:'14px',color:'#7B6FAE',fontWeight:500}},'每一次克制都是进步')),h('button',{class:'ib tap',onclick:()=>navigate('/budget/settings'),style:{marginTop:'4px',width:'36px',height:'36px',borderRadius:'50%',flexShrink:0,background:'rgba(255,255,255,.7)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.settings2({color:'#7C5CFC',size:16})})),
+    p.goals.length?h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},p.goals.map(g=>{const active=b.goalId===g.id;return h('button',{class:'row tap',onclick:()=>{b.goalId=g.id;render();},style:{flexShrink:0,gap:'8px',padding:'8px 12px',borderRadius:'12px',background:active?'rgba(255,255,255,.9)':'rgba(255,255,255,.5)',border:'1.5px solid '+(active?g.color:'transparent'),boxShadow:active?('0 4px 12px '+g.color+'25'):'none'}},h('span',{style:{fontSize:'16px'}},g.icon),h('div',{style:{textAlign:'left'}},h('p',{style:{fontSize:'12px',lineHeight:1,color:active?g.color:'#9B8EC4',fontWeight:700}},g.name),h('p',{style:{fontSize:'10px',marginTop:'2px',color:'#C8CBD8'}},(Math.round((g.current/g.target)*1000)/10)+'%')));}),h('button',{class:'ib tap','aria-label':'新增心愿',onclick:()=>openOverlay(openGoalNew()),style:{flexShrink:0,minWidth:'40px',alignSelf:'stretch',borderRadius:'12px',background:'rgba(255,255,255,.55)',border:'1.5px dashed rgba(124,92,252,.4)'},html:I.plus({color:'#7C5CFC',size:18})})):null,
+  );
+
+  if(!goal){
+    return h('div',{class:'page'},header,h('div',{class:'px5',style:{marginTop:'40px'}},
+      emptyState('🌈','还没有许下心愿','攒钱买点想要的吧～记录每一次"忍住没买"，看着它一点点蓄力到达成 ✨',{label:'+ 许个愿望',onClick:()=>navigate('/add',{mode:'save'})}),
+    ));
+  }
+
+  const st=goalStats(p,goal);
+  const cd=new Date(); cd.setMonth(cd.getMonth()+st.monthsLeft);
+  const completion=cd.getFullYear()+'年'+(cd.getMonth()+1)+'月';
+
+  return h('div',{class:'page'},header,
+    h('div',{class:'px5',style:{marginTop:'16px',display:'flex',flexDirection:'column',gap:'16px'}},
+      h('div',{class:'anim-pop',style:{borderRadius:'16px',padding:'20px',position:'relative',overflow:'hidden',background:'linear-gradient(135deg,'+goal.color+'CC,'+goal.color+')',boxShadow:'0 8px 32px '+goal.color+'50'}},
+        h('div',{style:{position:'absolute',top:'-32px',right:'-32px',width:'128px',height:'128px',borderRadius:'50%',background:'rgba(255,255,255,.07)'}}),
+        h('div',{class:'between',style:{alignItems:'flex-start',marginBottom:'16px',position:'relative'}},h('div',{},h('div',{class:'row',style:{gap:'8px',marginBottom:'4px'}},h('span',{class:'ib',html:I.spark({color:'#FDE047',size:16})}),h('span',{style:{fontSize:'12px',color:'rgba(255,255,255,.8)',fontWeight:600}},'当前目标')),h('h2',{style:{fontSize:'20px',color:'#fff',fontWeight:900}},goal.name),h('p',{style:{fontSize:'12px',color:'rgba(255,255,255,.6)',marginTop:'2px'}},st.remaining>0?('预计 '+completion+' 达成'):'已达成 🎉')),h('button',{class:'ib tap',onclick:()=>openOverlay(openGoalEdit(goal.id)),style:{width:'64px',height:'64px',borderRadius:'16px',fontSize:'36px',background:'rgba(255,255,255,.18)',border:'none',position:'relative'}},goal.icon,h('span',{class:'ib',style:{position:'absolute',right:'-4px',bottom:'-4px',width:'22px',height:'22px',borderRadius:'50%',background:'#fff',boxShadow:'0 2px 6px rgba(0,0,0,.2)'},html:I.edit({color:'#7C5CFC',size:12})}))),
+        h('div',{style:{position:'relative'}},h('div',{class:'between',style:{fontSize:'12px',color:'rgba(255,255,255,.8)',marginBottom:'8px'}},h('span',{},'¥'+fmt(goal.current)+' 已蓄力'),h('span',{style:{fontWeight:700}},'目标 ¥'+fmt(goal.target))),h('div',{style:{height:'12px',borderRadius:'999px',overflow:'hidden',background:'rgba(255,255,255,.2)'}},h('div',{style:{height:'100%',borderRadius:'999px',width:st.pct+'%',background:'linear-gradient(90deg,#FFD770,#FFB347)',animation:'grow-w 1s ease both'}})),h('div',{class:'between',style:{marginTop:'8px'}},h('span',{style:{fontSize:'12px',color:'rgba(255,255,255,.8)'}},'已蓄力 '+st.pct+'%'),h('div',{class:'row',style:{gap:'4px'}},h('span',{class:'ib',style:{animation:'pulse 1.5s infinite'},html:I.spark({color:'#FDE047',size:14})}),h('span',{style:{fontSize:'12px',color:'#FDE047',fontWeight:700}},st.remaining>0?('再省 ¥'+fmt(st.remaining)+'！'):'达成啦！')))),
+      ),
+      h('div',{class:'card anim-up d1',style:{padding:'20px'}},
+        h('div',{class:'between',style:{marginBottom:'4px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'达成路径'),h('span',{style:{fontSize:'12px',color:'#7C5CFC',fontWeight:700}},st.remaining>0?('预计 '+completion):'已达成')),
+        h('p',{style:{fontSize:'12px',marginBottom:'16px',color:'#B0B4C8'}},st.contribs.length?('按平均每月存入 ¥'+fmt(st.avgMonthly)+'，还需约 '+st.monthsLeft+' 个月'):'还没有存入记录，存第一笔后这里会预测达成时间'),
+        st.contribs.length?h('div',{class:'row noscroll',style:{marginBottom:'20px',overflowX:'auto',paddingBottom:'4px'}},Array.from({length:Math.min(st.monthsLeft,8)},(_,i)=>{const projected=goal.current+st.avgMonthly*(i+1);const pct=Math.min(Math.round((projected/goal.target)*100),100);const isLast=i===st.monthsLeft-1||i===7;return h('div',{style:{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',minWidth:'48px'}},h('div',{class:'ib',style:{width:'32px',height:'32px',borderRadius:'50%',fontSize:'10px',marginBottom:'4px',background:isLast?'linear-gradient(135deg,'+goal.color+',#FFB347)':'#EEF0F8',color:isLast?'#fff':'#9B8EC4',fontWeight:700}},(isLast&&i<7)?'🎉':pct+'%'),h('div',{style:{height:'2px',width:'100%',background:isLast?goal.color:'#EEF0F8'}}),h('p',{style:{fontSize:'9px',marginTop:'4px',textAlign:'center',color:'#C8CBD8'}},(i+1)+'月后'));})):null,
+        h('div',{class:'between',style:{padding:'12px 16px',borderRadius:'12px',marginBottom:'16px',background:goal.color+'0D',border:'1px solid '+goal.color+'20'}},h('div',{},h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:600}},'本月已存入'),h('p',{style:{fontSize:'20px',color:goal.color,fontWeight:900}},'¥'+fmt(st.savedThisMonth))),h('div',{style:{textAlign:'right'}},h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'共 '+st.contribs.length+' 笔克制'),h('p',{style:{fontSize:'12px',color:'#4ECDC4',fontWeight:700}},'目标进度 +'+((st.savedThisMonth/goal.target)*100).toFixed(1)+'%'))),
+        st.contribs.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}},st.contribs.slice(0,8).map(c=>h('div',{class:'anim-x row',style:{gap:'12px',padding:'12px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'ib',style:{width:'36px',height:'36px',borderRadius:'12px',fontSize:'20px',flexShrink:0,background:'#fff'}},c.icon),h('div',{class:'grow'},h('p',{class:'trunc',style:{fontSize:'12px',color:'#3D3D5C',fontWeight:600}},c.note),h('p',{style:{fontSize:'10px',color:'#B0B4C8'}},c.date)),h('span',{style:{fontSize:'14px',flexShrink:0,color:goal.color,fontWeight:800}},'+¥'+fmt(c.amount))))):h('p',{style:{textAlign:'center',fontSize:'12px',padding:'8px 0 16px',color:'#C8CBD8'}},'还没有存入记录，快去记录第一笔克制吧！'),
+        h('button',{class:'tap',onclick:()=>navigate('/add',{mode:'save'}),style:{marginTop:'16px',width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',background:'linear-gradient(135deg,#FF6B9D,#FF8FB4)',color:'#fff',fontWeight:800,boxShadow:'0 4px 16px rgba(255,107,157,.3)'}},'🔥 记录新的克制，继续蓄力！'),
+      ),
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · BUDGET SETTINGS  (预算设置 · 真实)
+============================================================================ */
+function catSpent(p,name){ return p.transactions.filter(t=>sameMonth(t.ts)&&t.category===name).reduce((s,t)=>s+t.amount,0); }
+ROUTES['/budget/settings']=function(){
+  const p=currentProfile(), s=UI.bset;
+  const budget=p.monthlyBudget||0;
+  const cats=p.categoryBudgets;
+  const totalAllocated=cats.reduce((a,c)=>a+c.budget,0);
+  const totalSpent=monthSpentTotal(p);
+  const overCount=cats.filter(c=>catSpent(p,c.name)>c.budget).length;
+  const allocPct=budget>0?Math.min((totalAllocated/budget)*100,100):0;
+
+  const saveAll=()=>{ s.saved=true; render(); setTimeout(()=>{s.saved=false;navigate('/budget');},800); };
+  const suggestCats=()=>{ // build from real spend
+    const ca=categoryAgg(p,'current').arr;
+    if(ca.length===0){ showToast('本月还没有消费，无法生成建议'); return; }
+    ca.slice(0,6).forEach(c=>{ const exist=p.categoryBudgets.find(x=>x.name===c.name); const suggested=Math.max(100,Math.ceil((c.amount*1.2)/100)*100); if(exist){exist.budget=Math.max(exist.budget,suggested);} else {p.categoryBudgets.push({id:Date.now()+Math.random(),icon:catMeta(c.name).icon,name:c.name,budget:suggested,color:catMeta(c.name).color});} });
+    Store.save(); showToast('已按你的真实消费生成预算 ✨'); render();
+  };
+
+  const addModal=s.showAdd?h('div',{},
+    h('div',{class:'backdrop',style:{zIndex:40},onclick:()=>{s.showAdd=false;render();}}),
+    h('div',{class:'sheet',style:{zIndex:50,padding:'20px',borderRadius:'24px 24px 0 0'}},
+      h('div',{class:'between',style:{marginBottom:'16px'}},h('p',{style:{fontSize:'16px',color:'#1A1A2E',fontWeight:800}},'添加分类预算'),h('button',{class:'ib',onclick:()=>{s.showAdd=false;render();},style:{width:'32px',height:'32px',borderRadius:'50%',background:'#F4F5FB'},html:I.x({color:'#9B8EC4',size:16})})),
+      h('p',{style:{fontSize:'12px',marginBottom:'8px',color:'#9B8EC4',fontWeight:600}},'选择图标'),
+      h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'16px'}},CAT_ICONS.map(ic=>h('button',{class:'ib',onclick:()=>{s.newIcon=ic;render();},style:{width:'40px',height:'40px',borderRadius:'12px',fontSize:'20px',background:s.newIcon===ic?'rgba(124,92,252,.12)':'#F4F5FB',border:'1.5px solid '+(s.newIcon===ic?'#7C5CFC':'transparent')}},ic))),
+      h('input',{id:'bs-name',placeholder:'分类名称（如：咖啡奶茶）',class:'field',style:{marginBottom:'12px'}}),
+      h('div',{class:'row',style:{gap:'8px',marginBottom:'16px'}},h('span',{style:{fontSize:'14px',color:'#9B8EC4',whiteSpace:'nowrap'}},'每月预算 ¥'),h('input',{id:'bs-budget',type:'number',placeholder:'500',class:'field'})),
+      h('button',{class:'ib tap',onclick:()=>{const nm=$('#bs-name').value.trim(),bg=$('#bs-budget').value;if(!nm||!bg){showToast('请填写名称和金额');return;}p.categoryBudgets.push({id:Date.now(),icon:s.newIcon,name:nm,budget:parseInt(bg)||500,color:CAT_COLORS[p.categoryBudgets.length%CAT_COLORS.length]});s.newIcon='📦';s.showAdd=false;Store.save();render();},style:{width:'100%',padding:'14px',borderRadius:'16px',fontSize:'14px',gap:'8px',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',color:'#fff',fontWeight:800}},h('span',{class:'ib',html:I.check({color:'#fff',size:16})}),'添加分类'),
+    ),
+  ):null;
+  if(addModal)setTimeout(()=>openOverlay(addModal),0);
+
+  return h('div',{class:'page',style:{paddingBottom:'112px'}},
+    h('div',{class:'px5 head-grad-2',style:{paddingTop:'58px',paddingBottom:'20px'}},
+      h('div',{class:'between',style:{marginBottom:'20px'}},h('button',{class:'ib tap',onclick:()=>navigate('/budget'),style:{width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,.8)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.back({color:'#7C5CFC',size:16})}),h('h1',{style:{fontSize:'16px',color:'#1A1A2E',fontWeight:800}},'预算设置'),h('button',{class:'ib pill tap',onclick:saveAll,style:{padding:'6px 12px',fontSize:'12px',gap:'6px',background:s.saved?'#4ECDC4':'linear-gradient(135deg,#7C5CFC,#FF6B9D)',color:'#fff',fontWeight:700,boxShadow:'0 4px 12px rgba(124,92,252,.3)'}},s.saved?h('span',{class:'ib',html:I.check({color:'#fff',size:14})}):null,s.saved?'已保存！':'保存')),
+      h('div',{style:{borderRadius:'16px',padding:'20px',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',boxShadow:'0 8px 28px rgba(124,92,252,.3)'}},
+        h('p',{style:{fontSize:'12px',color:'rgba(255,255,255,.7)',fontWeight:600,marginBottom:'4px'}},'本月总预算'),
+        s.editingMonthly?h('div',{style:{display:'flex',alignItems:'baseline',gap:'4px',marginBottom:'12px'}},h('span',{style:{fontSize:'20px',color:'rgba(255,255,255,.7)'}},'¥'),h('input',{id:'bs-monthly',type:'number',value:budget||'',autofocus:'true',onblur:(e)=>{const v=parseInt(e.target.value);p.monthlyBudget=(!isNaN(v)&&v>0)?v:null;s.editingMonthly=false;Store.save();render();},onkeydown:(e)=>{if(e.key==='Enter')e.target.blur();},style:{fontSize:'36px',fontWeight:900,background:'transparent',border:'none',outline:'none',color:'#fff',width:'170px'}})):h('button',{onclick:()=>{s.editingMonthly=true;render();},style:{display:'flex',alignItems:'baseline',gap:'4px',marginBottom:'12px'}},h('span',{style:{fontSize:'20px',color:'rgba(255,255,255,.7)'}},'¥'),h('span',{style:{fontSize:'36px',fontWeight:900,color:'#fff'}},budget?fmt(budget):'未设置'),h('span',{style:{fontSize:'12px',color:'rgba(255,255,255,.5)',marginLeft:'6px'}},'点击修改')),
+        h('div',{style:{height:'8px',borderRadius:'999px',overflow:'hidden',marginBottom:'8px',background:'rgba(255,255,255,.2)'}},h('div',{style:{height:'100%',borderRadius:'999px',width:allocPct+'%',background:allocPct>95?'#FF6B9D':'rgba(255,255,255,.7)',animation:'grow-w .7s ease both'}})),
+        h('div',{class:'between',style:{fontSize:'12px',color:'rgba(255,255,255,.7)'}},h('span',{},'已分配 ¥'+fmt(totalAllocated)),budget?h('span',{style:{color:allocPct>100?'#FFD770':'rgba(255,255,255,.7)'}},allocPct>100?('⚠️ 超出 ¥'+fmt(totalAllocated-budget)):('剩余 ¥'+fmt(budget-totalAllocated))):h('span',{},'先设置总预算')),
+      ),
+    ),
+    h('div',{class:'px5',style:{marginTop:'16px',display:'flex',flexDirection:'column',gap:'16px'}},
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}},[{label:'本月已花',val:'¥'+fmt(totalSpent),color:'#FF6B9D',bg:'rgba(255,107,157,.08)'},{label:'剩余可花',val:budget?('¥'+fmt(Math.max(budget-totalSpent,0))):'—',color:'#4ECDC4',bg:'rgba(78,205,196,.08)'},{label:'超支分类',val:overCount+' 个',color:overCount>0?'#FF4D6D':'#4ECDC4',bg:overCount>0?'rgba(255,77,109,.08)':'rgba(78,205,196,.08)'}].map(st=>h('div',{style:{borderRadius:'12px',padding:'12px 8px',textAlign:'center',background:st.bg}},h('p',{style:{fontSize:'14px',color:st.color,fontWeight:900,marginBottom:'2px'}},st.val),h('p',{style:{fontSize:'10px',color:'#9B8EC4'}},st.label)))),
+
+      h('div',{class:'card',style:{overflow:'hidden'}},
+        h('div',{class:'between',style:{padding:'16px 20px',borderBottom:'1px solid rgba(124,92,252,.06)'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'分类预算'),h('button',{class:'pill',onclick:()=>{s.showAdd=true;s.newIcon='📦';render();},style:{fontSize:'12px',color:'#7C5CFC',fontWeight:600,gap:'4px'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),'添加分类')),
+        cats.length===0?h('div',{style:{textAlign:'center',padding:'28px 16px'}},h('p',{style:{fontSize:'30px',marginBottom:'8px'}},'🗂️'),h('p',{style:{fontSize:'13px',color:'#7B6FAE',fontWeight:700,marginBottom:'4px'}},'还没有分类预算'),h('p',{style:{fontSize:'12px',color:'#B0B4C8',marginBottom:'14px'}},'手动添加，或让 AI 按你的真实消费一键生成'),h('button',{class:'tap',onclick:suggestCats,style:{padding:'8px 16px',borderRadius:'999px',fontSize:'12px',fontWeight:700,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'✨ AI 一键生成预算')):h('div',{},cats.map((c,i)=>{const sp=catSpent(p,c.name);const pct=c.budget>0?Math.min((sp/c.budget)*100,100):0;const over=sp>c.budget;const editing=s.editingId===c.id;return h('div',{class:'anim-x',style:{padding:'16px 20px',borderTop:i>0?'1px solid rgba(124,92,252,.05)':'none'}},
+          h('div',{class:'between',style:{marginBottom:'10px'}},h('div',{class:'row',style:{gap:'10px'}},h('div',{class:'ib',style:{width:'36px',height:'36px',borderRadius:'12px',fontSize:'18px',background:'#F8F9FE'}},c.icon),h('div',{},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},c.name),h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'已花 ¥'+fmt(sp)))),h('div',{class:'row',style:{gap:'8px'}},editing?h('div',{class:'row',style:{gap:'4px'}},h('span',{style:{fontSize:'12px',color:'#9B8EC4'}},'¥'),h('input',{id:'cat-edit',type:'number',value:c.budget,autofocus:'true',onblur:(e)=>{const v=parseInt(e.target.value);if(!isNaN(v)&&v>0)c.budget=v;s.editingId=null;Store.save();render();},onkeydown:(e)=>{if(e.key==='Enter')e.target.blur();},style:{width:'80px',textAlign:'right',fontSize:'14px',fontWeight:700,background:'transparent',border:'none',borderBottom:'2px solid '+c.color,outline:'none',color:c.color}})):h('button',{onclick:()=>{s.editingId=c.id;render();},style:{textAlign:'right'}},h('p',{style:{fontSize:'14px',color:c.color,fontWeight:800}},'¥'+fmt(c.budget)),h('p',{style:{fontSize:'10px',color:'#C8CBD8'}},'点击修改')),h('button',{class:'ib',onclick:()=>{p.categoryBudgets=p.categoryBudgets.filter(x=>x.id!==c.id);Store.save();render();},style:{width:'28px',height:'28px',borderRadius:'50%',marginLeft:'4px',background:'#FFF0F5'},html:I.trash({color:'#FF6B9D',size:14})}))),
+          h('div',{style:{height:'8px',borderRadius:'999px',overflow:'hidden',background:'#EEF0F8'}},h('div',{style:{height:'100%',borderRadius:'999px',width:pct+'%',background:over?'linear-gradient(90deg,#FFB347,#FF4D6D)':c.color,animation:'grow-w .7s ease both'}})),
+          h('div',{class:'between',style:{marginTop:'6px',fontSize:'10px'}},h('span',{style:{color:'#B0B4C8'}},pct.toFixed(0)+'% 已使用'),over?h('span',{style:{color:'#FF4D6D',fontWeight:700}},'🚨 超支 ¥'+fmt(sp-c.budget)):h('span',{style:{color:'#B0B4C8'}},'剩余 ¥'+fmt(c.budget-sp))),
+        );})),
+      ),
+
+      cats.length>0?h('div',{style:{borderRadius:'16px',padding:'20px',background:'linear-gradient(135deg,#F5F0FF,#FFF0F8)',border:'1px solid rgba(124,92,252,.1)'}},h('div',{class:'row',style:{gap:'12px',alignItems:'flex-start'}},h('div',{class:'ib',style:{width:'36px',height:'36px',borderRadius:'12px',fontSize:'18px',flexShrink:0,background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)'}},'🤖'),h('div',{},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700,marginBottom:'4px'}},'AI 预算建议'),h('p',{style:{fontSize:'12px',lineHeight:1.6,color:'#7B6FAE'}},'根据你本月的真实消费，重新校准各分类预算（取实际花费的约 1.2 倍并取整）。'),h('button',{class:'tap',onclick:suggestCats,style:{marginTop:'8px',padding:'6px 12px',borderRadius:'999px',fontSize:'11px',fontWeight:700,background:'rgba(124,92,252,.12)',color:'#7C5CFC'}},'按真实消费重新生成 ✨')))):null,
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · REVIEW  (消费评价墙 · 真实)
+============================================================================ */
+ROUTES['/review']=function(){
+  const p=currentProfile(), r=UI.review;
+  const tx=[...p.transactions].sort((a,b)=>b.ts-a.ts);
+  const setMood=(id,mood)=>{const t=p.transactions.find(x=>x.id===id);t.mood=(t.mood===mood?null:mood);Store.save();render();};
+  const inRange=(ts)=>{ const tr=r.timeRange; if(tr==='month')return sameMonth(ts); if(tr==='last')return ym(ts)===nowYM()-1; if(tr==='3m')return ym(ts)>=nowYM()-2; return true; };
+  const filtered=tx.filter(t=>{ const moodOk=r.filter==='未评价'?t.mood===null:r.filter==='真香'?t.mood==='great':r.filter==='后悔'?t.mood==='regret':true; const catOk=(r.category==='全部'||t.category===r.category); return moodOk&&catOk&&inRange(t.ts); });
+  const fActive=(r.timeRange!=='all'||r.category!=='全部');
+  const great=tx.filter(t=>t.mood==='great').length, regret=tx.filter(t=>t.mood==='regret').length, pending=tx.filter(t=>t.mood===null).length;
+  const regretAmt=tx.filter(t=>t.mood==='regret').reduce((s,t)=>s+t.amount,0);
+
+  return h('div',{class:'page'},
+    h('div',{class:'px5 head-grad',style:{paddingTop:'58px',paddingBottom:'20px'}},
+      h('div',{class:'between',style:{marginBottom:'16px'}},h('button',{class:'ib tap',onclick:()=>navigate('/'),style:{width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,.8)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.back({color:'#7C5CFC',size:16})}),h('h1',{style:{fontSize:'16px',color:'#1A1A2E',fontWeight:800}},'消费评价墙'),h('button',{class:'ib tap',onclick:()=>openOverlay(openReviewFilter()),style:{width:'36px',height:'36px',borderRadius:'50%',background:'rgba(255,255,255,.8)',boxShadow:'0 2px 8px rgba(124,92,252,.12)',position:'relative'}},h('span',{class:'ib',html:I.filter({color:fActive?'#FF6B9D':'#7C5CFC',size:16})}),fActive?h('span',{style:{position:'absolute',top:'7px',right:'7px',width:'8px',height:'8px',borderRadius:'50%',background:'#FF6B9D',border:'1.5px solid #fff'}}):null)),
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}},[{n:great,l:'😊 真香',c:'#2BAD9E',bg:'rgba(78,205,196,.15)'},{n:regret,l:'😰 后悔',c:'#E8527A',bg:'rgba(255,107,157,.12)'},{n:pending,l:'⏳ 待评',c:'#8B8FA8',bg:'rgba(176,180,200,.15)'}].map(x=>h('div',{style:{borderRadius:'12px',padding:'12px 0',textAlign:'center',background:x.bg}},h('p',{style:{fontSize:'20px',color:x.c,fontWeight:900}},x.n),h('p',{style:{fontSize:'11px',marginTop:'2px',color:x.c,fontWeight:600}},x.l)))),
+      regret>0?h('div',{class:'row',style:{marginTop:'12px',padding:'8px 12px',borderRadius:'12px',gap:'8px',background:'rgba(255,107,157,.1)',border:'1px solid rgba(255,107,157,.2)'}},h('span',{style:{fontSize:'14px'}},'🚨'),h('p',{style:{fontSize:'12px',color:'#C04470'},html:'后悔消费共 <b>¥'+fmt(regretAmt)+'</b>，AI 可帮你制定下月克制计划'})):null,
+    ),
+    h('div',{class:'px5',style:{marginTop:'16px',display:'flex',flexDirection:'column',gap:'16px'}},
+      tx.length===0?emptyState('🧾','还没有账单可评价','先去记几笔消费，回来给它们标记「真香」或「后悔」，AI 才能分析你的消费规律',{label:'+ 去记一笔',onClick:()=>navigate('/add')}):h('div',{style:{display:'flex',flexDirection:'column',gap:'16px'}},
+        h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},['全部','未评价','真香','后悔'].map(opt=>h('button',{class:'tap',onclick:()=>{r.filter=opt;render();},style:{flexShrink:0,padding:'8px 16px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:r.filter===opt?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#EEF0F8',color:r.filter===opt?'#fff':'#8B8FA8',boxShadow:r.filter===opt?'0 4px 12px rgba(124,92,252,.3)':'none'}},opt,(opt==='未评价'&&pending>0)?h('span',{class:'ib',style:{marginLeft:'6px',width:'16px',height:'16px',borderRadius:'50%',fontSize:'9px',background:r.filter===opt?'rgba(255,255,255,.3)':'#FF6B9D',color:'#fff',fontWeight:800}},pending):null))),
+        h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginTop:'-4px'}},'💡 点账单卡片可编辑金额/日期或删除'),
+        h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},filtered.length===0?h('div',{style:{textAlign:'center',padding:'48px 0'}},h('p',{style:{fontSize:'36px',marginBottom:'12px'}},'✨'),h('p',{style:{fontSize:'14px',color:'#B0B4C8',fontWeight:600}},'这里暂时没有记录')):filtered.map(it=>h('div',{class:'card anim-up',style:{padding:'16px',boxShadow:'0 2px 8px rgba(124,92,252,.06)'}},
+          h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'12px'}},h('div',{class:'row grow tap',style:{gap:'12px',cursor:'pointer'},onclick:()=>openOverlay(openTxEdit(it.id))},h('div',{class:'ib',style:{width:'44px',height:'44px',borderRadius:'12px',fontSize:'24px',flexShrink:0,background:'#F8F9FE'}},it.catIcon||catMeta(it.category).icon),h('div',{style:{minWidth:0}},h('p',{class:'trunc',style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},it.name),h('div',{class:'row',style:{gap:'6px',marginTop:'2px',flexWrap:'wrap'}},h('span',{style:{fontSize:'12px',color:'#7C5CFC',fontWeight:700}},'¥'+fmt(it.amount)),h('span',{style:{fontSize:'12px',color:'#C8CBD8'}},'·'),h('span',{style:{fontSize:'12px',color:'#B0B4C8'}},dateLabel(it.ts)),it.motivation?h('span',{style:{fontSize:'10px',padding:'2px 6px',borderRadius:'999px',fontWeight:600,background:motivMeta(it.motivation).bg,color:motivMeta(it.motivation).color}},it.motivation):null))),h('div',{class:'row',style:{gap:'8px',flexShrink:0}},h('button',{class:'tap',onclick:()=>setMood(it.id,'great'),style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'2px',padding:'8px 12px',borderRadius:'12px',background:it.mood==='great'?'rgba(78,205,196,.15)':'#F4F5FB',border:'1.5px solid '+(it.mood==='great'?'#4ECDC4':'transparent')}},h('span',{style:{fontSize:'18px'}},'😊'),h('span',{style:{fontSize:'10px',fontWeight:700,color:it.mood==='great'?'#2BAD9E':'#B0B4C8'}},'真香')),h('button',{class:'tap',onclick:()=>setMood(it.id,'regret'),style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'2px',padding:'8px 12px',borderRadius:'12px',background:it.mood==='regret'?'rgba(255,107,157,.12)':'#F4F5FB',border:'1.5px solid '+(it.mood==='regret'?'#FF6B9D':'transparent')}},h('span',{style:{fontSize:'18px'}},'😰'),h('span',{style:{fontSize:'10px',fontWeight:700,color:it.mood==='regret'?'#E8527A':'#B0B4C8'}},'后悔')))),
+          it.mood!==null?h('div',{class:'row',style:{marginTop:'12px',padding:'8px 12px',borderRadius:'12px',fontSize:'12px',fontWeight:600,gap:'6px',background:it.mood==='great'?'rgba(78,205,196,.08)':'rgba(255,107,157,.08)',color:it.mood==='great'?'#2BAD9E':'#E8527A'}},it.mood==='great'?'✦ 好评已记录！继续保持理性消费 🌟':'✦ 已标记后悔，AI 将分析冲动消费规律 📊'):null,
+        ))),
+        regret>=2?h('div',{class:'anim-up',style:{borderRadius:'16px',padding:'20px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)',boxShadow:'0 8px 24px rgba(124,92,252,.3)'}},h('p',{style:{color:'#fff',fontWeight:800,fontSize:'14px',marginBottom:'4px'}},'🤖 AI 帮你分析后悔规律'),h('p',{style:{color:'rgba(255,255,255,.8)',fontSize:'12px',marginBottom:'12px',lineHeight:1.6}},'你有 '+regret+' 笔后悔消费，共 ¥'+fmt(regretAmt)+'。和教练聊聊，制定下月克制计划吧。'),h('button',{onclick:()=>navigate('/coach',{question:'哪些消费可以优化？'}),style:{padding:'8px 16px',borderRadius:'999px',fontSize:'12px',fontWeight:700,background:'rgba(255,255,255,.2)',color:'#fff'}},'查看完整分析报告 →')):null,
+      ),
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · PROFILE  (我的 · 真实 + 退出登录)
+============================================================================ */
+ROUTES['/profile']=function(){
+  const p=currentProfile();
+  const days=Math.max(1,Math.ceil((Date.now()-p.createdAt)/86400000));
+  const saved=p.goals.reduce((s,g)=>s+g.current,0);
+  const savedMonth=p.contributions.filter(c=>sameMonth(c.ts)).reduce((s,c)=>s+c.amount,0);
+  const stats=[{value:String(days),label:'陪伴天数',color:'#7C5CFC'},{value:'¥'+fmt(saved),label:'已攒金额',color:'#FF6B9D'},{value:'¥'+fmt(savedMonth),label:'本月挽回',color:'#4ECDC4'}];
+  const recN=(p.recurrings||[]).filter(r=>r.active!==false).length;
+  const menu=[{icon:I.brain,iconBg:'#F0ECFF',iconColor:'#7C5CFC',title:'AI 设置',sub:aiConfigured()?('已接入 '+(Store.data.ai.model||'deepseek')):'接入 DeepSeek 等真实大模型',act:()=>openAISettings()},{icon:I.refresh,iconBg:'#EEF6FF',iconColor:'#5AB0E0',title:'定期扣除',sub:recN>0?(recN+' 项生效中 · 到期自动记账'):'房租/订阅等到期自动记账',act:()=>openOverlay(openRecurrings())},{icon:I.clip,iconBg:'#FFF4E6',iconColor:'#C08820',title:'账单导入与导出',sub:'支持 CSV，与 Excel 互通',act:()=>openCSVSheet()},{icon:I.download,iconBg:'#E9FBF8',iconColor:'#2BAD9E',title:'本地数据库与备份',sub:'数据存于本机·可导出 JSON',act:()=>openDBSheet()},{icon:I.users,iconBg:'#FFE8F3',iconColor:'#FF6B9D',title:'和朋友一起用',sub:'多人 / 跨设备同步方案建议',act:()=>openShareSheet()}];
+  const logout=()=>{ Store.data.session=null; Store.save(); UI.home.coachIdx=0; navigate('/login'); };
+
+  return h('div',{class:'page'},
+    h('div',{class:'px5 head-grad',style:{paddingTop:'58px',paddingBottom:'24px'}},
+      h('div',{class:'between'},h('div',{class:'row',style:{gap:'16px'}},h('div',{class:'ib',style:{width:'60px',height:'60px',borderRadius:'16px',fontSize:'30px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)',boxShadow:'0 6px 20px rgba(124,92,252,.35)'}},avatarFor(p)),h('div',{},h('div',{class:'row',style:{gap:'8px'}},h('h1',{style:{fontSize:'20px',color:'#1A1A2E',fontWeight:900}},p.nickname+' 👑'),h('button',{class:'ib tap',onclick:()=>openOverlay(openGenderSheet()),style:{gap:'3px',padding:'4px 8px',borderRadius:'999px',background:'rgba(255,255,255,.75)',fontSize:'12px',fontWeight:700,color:'#7C5CFC',boxShadow:'0 1px 5px rgba(124,92,252,.12)'},title:'点击修改性别'},avatarFor(p)+' '+genderLabel(p.gender),h('span',{class:'ib',style:{marginLeft:'1px'},html:I.edit({color:'#7C5CFC',size:11})})) ),h('div',{class:'row',style:{gap:'8px',marginTop:'4px',flexWrap:'wrap'}},h('span',{style:{fontSize:'10px',padding:'2px 8px',borderRadius:'999px',background:'rgba(124,92,252,.1)',color:'#7C5CFC',fontWeight:700}},'用户 ID #'+(p.id||'—')),h('span',{style:{fontSize:'12px',color:'#7B6FAE'}},'手机号 '+(p.phone.slice(0,3)+'****'+p.phone.slice(7))))))),
+      h('div',{style:{marginTop:'20px',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}},stats.map(st=>h('div',{style:{borderRadius:'12px',padding:'12px 0',textAlign:'center',background:'rgba(255,255,255,.7)'}},h('p',{style:{fontSize:'18px',color:st.color,fontWeight:900}},st.value),h('p',{style:{fontSize:'11px',marginTop:'2px',color:'#9B8EC4'}},st.label)))),
+    ),
+    h('div',{class:'px5',style:{marginTop:'16px',display:'flex',flexDirection:'column',gap:'16px'}},
+      h('div',{class:'card anim-up d1',style:{padding:'20px'}},h('h2',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800,marginBottom:'16px'}},'更换你的消费陪练'),h('div',{class:'row noscroll',style:{gap:'12px',overflowX:'auto',paddingBottom:'4px'}},COACH_ORDER.map(id=>{const c=COACHES[id],active=p.coach===id;return h('button',{class:'tap',onclick:()=>{p.coach=id;Store.save();showToast('已切换为'+c.tag);render();},style:{position:'relative',flexShrink:0,width:'140px',borderRadius:'16px',padding:'16px',textAlign:'left',background:c.bg,border:'2px solid '+(active?c.borderColor:'transparent'),boxShadow:active?('0 4px 16px '+c.borderColor+'30'):'none'}},active?h('span',{class:'ib',style:{position:'absolute',top:'10px',right:'10px',width:'20px',height:'20px',borderRadius:'50%',background:c.borderColor},html:I.check({color:'#fff',size:12})}):null,h('p',{class:'trunc',style:{fontSize:'14px',color:c.textColor,fontWeight:800,marginBottom:'6px',paddingRight:'22px'}},c.name),h('p',{style:{fontSize:'10px',lineHeight:1.6,marginBottom:'8px',color:'#6B7280'}},c.desc),h('div',{style:{borderRadius:'8px',padding:'6px 8px',background:'rgba(255,255,255,.7)'}},h('p',{class:'trunc',style:{fontSize:'11px',fontStyle:'italic',color:'#4A4A6A'}},c.preview)));}))),
+      h('div',{class:'card anim-up d2',style:{overflow:'hidden'}},menu.map((it,i)=>h('button',{class:'between tap',onclick:it.act,style:{width:'100%',padding:'16px 20px',textAlign:'left',borderTop:i>0?'1px solid rgba(124,92,252,.06)':'none'}},h('div',{class:'row',style:{gap:'12px'}},h('div',{class:'ib',style:{width:'40px',height:'40px',borderRadius:'12px',background:it.iconBg},html:it.icon({color:it.iconColor,size:20})}),h('div',{},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},it.title),h('p',{style:{fontSize:'12px',color:'#9B8EC4'}},it.sub))),h('span',{class:'ib',html:I.chevR({color:'#C8CBD8',size:16})})))),
+      h('button',{class:'ib tap',onclick:logout,style:{width:'100%',padding:'14px',borderRadius:'14px',gap:'8px',background:'#fff',color:'#E8527A',fontWeight:700,fontSize:'14px',boxShadow:'0 2px 12px rgba(124,92,252,.08)'}},h('span',{class:'ib',html:I.logout({color:'#E8527A',size:18})}),'退出登录'),
+      h('p',{style:{textAlign:'center',fontSize:'12px',paddingBottom:'8px',color:'#C8CBD8'}},'MoodLedger v2.0 · 数据保存在本机 🌸'),
+    ),
+    null,
+  );
+};
+
+/* ============================================================================
+   SCREEN · COACH CHAT  (AI 教练 · 真实数据 + 陪练语气 + 记忆持久化)
+============================================================================ */
+function buildInitialMessages(p,q){
+  const greet={id:0,role:'ai',text:coachIntro(p)};
+  if(!q) return [greet];
+  return [greet,{id:1,role:'user',text:q},{id:2,role:'ai',text:coachReply(p,q),memoryPrompt:'你希望了解「'+q+'」相关的分析'}];
+}
+function scheduleMemCard(prompt){ if(!prompt)return; setTimeout(()=>{ UI.chat.memCardMsg=prompt; UI.chat.showMemCard=true; if(currentPath()==='/coach')render(); },700); }
+ROUTES['/coach']=function(){
+  const p=currentProfile(), c=UI.chat, coach=COACHES[p.coach]||COACHES[DEFAULT_COACH];
+  if(c.messages===null){ c.messages=buildInitialMessages(p,c.pendingQ); if(c.pendingQ)scheduleMemCard('你希望了解「'+c.pendingQ+'」相关的分析'); }
+  const FRAME_H=846,HEADER_H=108,INPUT_H=68;
+  const send=(text)=>{
+    const q=(text!=null?text:(($('#chat-input')&&$('#chat-input').value)||'')).trim(); if(!q)return;
+    c.showMemCard=false; c.messages.push({id:Date.now(),role:'user',text:q}); c.typing=true; render();
+    const memoryPrompt=q.length>5?('你希望了解「'+q.slice(0,14)+(q.length>14?'…':'')+'」相关的建议'):null;
+    const finish=(txt)=>{ c.typing=false; c.messages.push({id:Date.now()+1,role:'ai',text:txt,memoryPrompt}); render(); scheduleMemCard(memoryPrompt); };
+    if(aiConfigured()){
+      aiReply(p,c.messages).then(t=>finish(t)).catch(e=>{ finish(coachReply(p,q)+'\n\n（⚠️ 实时 AI 调用失败，已切换本地分析'+(e&&e.message?('；原因：'+e.message):'')+'）'); });
+    } else { setTimeout(()=>finish(coachReply(p,q)),900); }
+  };
+  const remember=()=>{ c.showMemCard=false; if(c.memCardMsg){p.memories.push({id:Date.now(),text:c.memCardMsg});Store.save();} c.toast=true; render(); setTimeout(()=>{c.toast=false;render();},1800); };
+  const inputVal=c._draft||'';
+
+  return h('div',{style:{position:'relative',height:FRAME_H+'px',overflow:'hidden',background:'#F8F9FE'}},
+    h('div',{class:'between',style:{position:'absolute',top:0,left:0,right:0,height:HEADER_H+'px',background:'linear-gradient(160deg,#EDE8FF 0%,#F8F9FE 100%)',paddingTop:'58px',paddingLeft:'16px',paddingRight:'16px',zIndex:10,borderBottom:'1px solid rgba(124,92,252,.07)'}},
+      h('button',{class:'ib tap',onclick:()=>navigate('/'),style:{width:'36px',height:'36px',borderRadius:'50%',flexShrink:0,background:'rgba(255,255,255,.8)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.back({color:'#7C5CFC',size:16})}),
+      h('div',{class:'tap',style:{textAlign:'center'},onclick:()=>openAISettings()},h('p',{style:{color:'#1A1A2E',fontWeight:800,fontSize:'15px',lineHeight:1.2}},coach.tag),h('p',{style:{fontSize:'10px',marginTop:'2px',color:aiConfigured()?'#2BAD9E':'#B0B4C8'}},aiConfigured()?('● 实时AI · '+(Store.data.ai.model||'deepseek')):'○ 本地分析 · 点此接入真实AI')),
+      h('button',{class:'ib pill tap',onclick:()=>{c.showMemModal=true;render();},style:{gap:'4px',padding:'6px 10px',background:'rgba(255,183,71,.12)',border:'1px solid rgba(255,183,71,.25)'}},h('span',{class:'ib',html:I.brain({color:'#C08820',size:12})}),h('span',{style:{color:'#C08820',fontWeight:700,fontSize:'10px'}},'记忆 · '+p.memories.length+' 条')),
+    ),
+    h('div',{class:'noscroll',ref:(e)=>{setTimeout(()=>{e.scrollTop=e.scrollHeight;},0);},style:{position:'absolute',top:HEADER_H+'px',bottom:INPUT_H+'px',left:0,right:0,overflowY:'auto',padding:'12px 16px 8px'}},
+      h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},
+        c.messages.map((msg,idx)=>h('div',{},
+          h('div',{style:{display:'flex',justifyContent:msg.role==='user'?'flex-end':'flex-start',alignItems:'flex-end',gap:'8px'}},msg.role==='ai'?h('div',{class:'ib',style:{width:'28px',height:'28px',borderRadius:'10px',fontSize:'14px',flexShrink:0,marginBottom:'2px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)'}},'🤖'):null,h('div',{class:'anim-pop',style:Object.assign({maxWidth:'78%',padding:'10px 14px',fontSize:'12px',lineHeight:1.6,whiteSpace:'pre-line',borderRadius:msg.role==='user'?'18px 18px 4px 18px':'18px 18px 18px 4px'},msg.role==='user'?{background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',color:'#fff',fontWeight:500}:{background:'#fff',color:'#3D3D5C',boxShadow:'0 2px 8px rgba(124,92,252,.08)',border:'1px solid rgba(124,92,252,.07)'})},msg.text)),
+          (msg.role==='ai'&&c.showMemCard&&idx===c.messages.length-1)?h('div',{class:'anim-up',style:{marginLeft:'36px',marginTop:'8px',borderRadius:'14px',padding:'10px 14px',background:'rgba(255,183,71,.08)',border:'1.5px solid rgba(255,183,71,.35)'}},h('p',{style:{fontSize:'10px',color:'#B08020',marginBottom:'8px',lineHeight:1.5},html:'<b>记住这条建议？</b> '+c.memCardMsg}),h('div',{class:'row',style:{gap:'8px'}},h('button',{class:'tap',onclick:remember,style:{padding:'4px 14px',borderRadius:'20px',background:'#FFB347',color:'#fff',fontWeight:700,fontSize:'11px'}},'记住'),h('button',{class:'tap',onclick:()=>{c.showMemCard=false;render();},style:{padding:'4px 14px',borderRadius:'20px',background:'#F4F5FB',color:'#9B8EC4',fontWeight:600,fontSize:'11px'}},'忽略'))):null,
+        )),
+        c.typing?h('div',{style:{display:'flex',alignItems:'flex-end',gap:'8px'}},h('div',{class:'ib',style:{width:'28px',height:'28px',borderRadius:'10px',fontSize:'14px',flexShrink:0,background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)'}},'🤖'),h('div',{style:{padding:'10px 14px',borderRadius:'18px 18px 18px 4px',background:'#fff',boxShadow:'0 2px 8px rgba(124,92,252,.08)',border:'1px solid rgba(124,92,252,.07)'}},h('div',{class:'row',style:{gap:'4px',height:'16px'}},[0,1,2].map(i=>h('div',{style:{width:'6px',height:'6px',borderRadius:'50%',background:'#B0B4C8',animation:'bounce .9s infinite',animationDelay:(i*0.18)+'s'}}))))):null,
+      ),
+    ),
+    h('div',{style:{position:'absolute',bottom:0,left:0,right:0,height:INPUT_H+'px',background:'#fff',borderTop:'1px solid rgba(124,92,252,.08)',padding:'10px 16px 12px',display:'flex',alignItems:'center',gap:'10px'}},
+      h('div',{class:'row grow',style:{gap:'8px',borderRadius:'22px',padding:'8px 14px',background:'#F4F5FB'}},h('input',{id:'chat-input',value:inputVal,placeholder:'问我任何理财问题...',oninput:(e)=>{c._draft=e.target.value;const btn=$('#chat-send');if(btn){const on=!!e.target.value.trim();btn.style.background=on?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF';const sv=btn.querySelector('svg');if(sv)sv.setAttribute('stroke',on?'#fff':'#B0B4C8');}},onkeydown:(e)=>{if(e.key==='Enter'){c._draft='';send(e.target.value);}},style:{flex:1,background:'transparent',border:'none',outline:'none',fontSize:'13px',color:'#1A1A2E'}}),h('button',{id:'chat-send',class:'ib tap',onclick:()=>{const v=c._draft||'';c._draft='';send(v);},style:{width:'32px',height:'32px',borderRadius:'50%',flexShrink:0,background:inputVal.trim()?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF'},html:I.send({color:inputVal.trim()?'#fff':'#B0B4C8',size:14})})),
+    ),
+    c.toast?h('div',{class:'toast',style:{bottom:(INPUT_H+12)+'px'}},h('span',{class:'ib',html:I.check({color:'#fff',size:14})}),'已加入记忆库'):null,
+    c.showMemModal?h('div',{},
+      h('div',{style:{position:'absolute',inset:0,background:'rgba(26,26,46,.45)',backdropFilter:'blur(4px)',zIndex:30,animation:'fadeIn .25s'},onclick:()=>{c.showMemModal=false;render();}}),
+      h('div',{style:{position:'absolute',bottom:0,left:0,right:0,zIndex:40,background:'#fff',borderRadius:'24px 24px 0 0',padding:'20px 20px 32px',boxShadow:'0 -8px 40px rgba(124,92,252,.15)',animation:'slideUp .32s cubic-bezier(.3,1,.5,1)'}},
+        h('div',{class:'handle',style:{margin:'0 auto 16px'}}),
+        h('div',{class:'between',style:{marginBottom:'16px'}},h('div',{},h('p',{style:{color:'#1A1A2E',fontWeight:800,fontSize:'15px'}},'我的记忆库'),h('p',{style:{color:'#B0B4C8',fontSize:'11px',marginTop:'2px'}},'AI 会根据这些记忆给你更精准的建议')),h('button',{class:'ib',onclick:()=>{c.showMemModal=false;render();},style:{width:'30px',height:'30px',borderRadius:'50%',background:'#F4F5FB'},html:I.x({color:'#9B8EC4',size:14})})),
+        p.memories.length===0?h('p',{style:{textAlign:'center',color:'#C8CBD8',fontSize:'12px',padding:'24px 0'}},'暂无记忆，对话时可以选择记住建议'):h('div',{class:'noscroll',style:{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'280px',overflowY:'auto'}},p.memories.map(m=>h('div',{class:'anim-x row',style:{gap:'10px',padding:'10px 14px',borderRadius:'14px',background:'rgba(255,183,71,.06)',border:'1px solid rgba(255,183,71,.2)'}},h('span',{style:{fontSize:'14px'}},'🧠'),h('p',{class:'grow',style:{fontSize:'12px',color:'#3D3D5C',lineHeight:1.5}},m.text),h('button',{class:'ib tap',onclick:()=>{p.memories=p.memories.filter(x=>x.id!==m.id);Store.save();render();},style:{width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,background:'#FFF0F5'},html:I.trash({color:'#FF6B9D',size:11})}))) ),
+      ),
+    ):null,
+  );
+};
+
+/* __APPEND_SCREENS__ */
+
+/* ============================================================================ BOOT */
+function boot(){ const pp=currentProfile(); if(pp&&processRecurrings(pp))Store.save(); if(!location.hash) location.hash='/'; render(); }
+/* 启动加载页（异步打开数据库期间显示） */
+$('#app').appendChild(h('div',{style:{minHeight:'852px',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(170deg,#EDE8FF,#FFE8F3)'}},
+  h('div',{style:{textAlign:'center'}},
+    h('div',{class:'ib',style:{width:'72px',height:'72px',borderRadius:'22px',fontSize:'38px',margin:'0 auto 14px',background:'linear-gradient(135deg,#7C5CFC,#FF6B9D)',animation:'floaty 3s ease-in-out infinite'}},'🌸'),
+    h('p',{style:{color:'#7B6FAE',fontSize:'13px',fontWeight:600}},'正在加载本地数据库…'),
+  )));
+loadAll().then(boot).catch(()=>{ Store.ready=true; boot(); });
+/* 语音：窗口级松手监听，保证无论手指/鼠标在哪里松开都能结束录音（修复卡死） */
+window.addEventListener('pointerup',()=>{ if(UI.add.recording) stopVoice(); });
+window.addEventListener('pointercancel',()=>{ if(UI.add.recording) stopVoice(); });
+window.addEventListener('mouseup',()=>{ if(UI.add.recording) stopVoice(); });
+window.addEventListener('touchend',()=>{ if(UI.add.recording) stopVoice(); });
+/* PWA：部署到 http(s) 时注册离线缓存（本地 file:// 自动跳过） */
+if(typeof navigator!=='undefined'&&navigator.serviceWorker&&location.protocol.indexOf('http')===0){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
