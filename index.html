@@ -84,7 +84,12 @@
   .anim-x{animation:slideX .35s ease both;}
   .anim-pop{animation:pop .25s ease both;}
   .d1{animation-delay:.05s;}.d2{animation-delay:.1s;}.d3{animation-delay:.18s;}.d4{animation-delay:.24s;}.d5{animation-delay:.3s;}
+  #app{background:var(--bg);}
   #app.no-anim *{animation:none !important;animation-delay:0s !important;}
+  #app.route-in{animation:fadeIn .2s ease both;}
+  input,textarea,select{scroll-margin-bottom:140px;}
+  #nav{padding-bottom:env(safe-area-inset-bottom);}
+  .sheet{padding-bottom:env(safe-area-inset-bottom);}
 
   #nav{position:absolute;left:0;right:0;bottom:0;z-index:50;}
   .nav{position:static;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-top:1px solid var(--line);}
@@ -109,6 +114,19 @@
   .toast{position:absolute;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;border-radius:20px;padding:8px 16px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;z-index:90;white-space:nowrap;box-shadow:0 4px 16px rgba(78,205,196,.4);animation:pop .25s ease;}
   .empty{text-align:center;padding:32px 20px;color:#B0B4C8;}
   .empty .ico{font-size:40px;margin-bottom:10px;}
+
+  /* ===== 手机适配：小屏铺满整屏、去掉仿真机身外壳、适配安全区 ===== */
+  @media (max-width: 520px){
+    body{ padding:0; min-height:100vh; min-height:100dvh; align-items:stretch; justify-content:flex-start; background:#F8F9FE; }
+    .frame-wrap{ width:100%; }
+    .btn-side{ display:none; }
+    .bezel{ width:100%; height:100vh; height:100dvh; border-radius:0; padding:0; box-shadow:none; background:#F8F9FE; }
+    .screen{ border-radius:0; height:100vh; height:100dvh; }
+    .island, .home-ind{ display:none; }
+    .page{ min-height:100vh; min-height:100dvh; padding-bottom:calc(92px + env(safe-area-inset-bottom, 0px)); }
+    .nav-inner{ padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); }
+    #nav{ padding-bottom:0; }
+  }
 </style>
 </head>
 <body>
@@ -233,9 +251,10 @@ function baseData(){ return {users:{},session:null,profiles:{},nextUserId:1001,a
 function defaultAI(){ return {enabled:false,vision:false,apiKey:'',baseUrl:'https://api.deepseek.com',model:'deepseek-chat'}; }
 function newProfile(phone,nickname){
   return {phone,id:null,nickname:nickname||'',gender:null,coach:DEFAULT_COACH,monthlyBudget:null,onboarded:false,createdAt:Date.now(),
-    transactions:[],goals:[],contributions:[],categoryBudgets:[],customTypes:[],customMotivs:[],recurrings:[],memories:[]};
+    transactions:[],goals:[],contributions:[],categoryBudgets:[],customTypes:[],customMotivs:[],recurrings:[],memories:[],
+    hiddenBuiltins:[],hiddenBuiltinMotivs:[],builtinIcons:{},builtinMotivIcons:{}};
 }
-function currentProfile(){ const s=Store.data.session; return s?Store.data.profiles[s]:null; }
+function currentProfile(){ const s=Store.data.session; const p=s?Store.data.profiles[s]:null; if(p){ if(!p.hiddenBuiltins)p.hiddenBuiltins=[]; if(!p.hiddenBuiltinMotivs)p.hiddenBuiltinMotivs=[]; if(!p.builtinIcons)p.builtinIcons={}; if(!p.builtinMotivIcons)p.builtinMotivIcons={}; if(!p.customTypes)p.customTypes=[]; if(!p.customMotivs)p.customMotivs=[]; } return p; }
 
 /* ---------- IndexedDB layer（内存缓存 + 异步落库，渲染仍同步） ---------- */
 let _idb=null;
@@ -312,10 +331,12 @@ function inputToTs(str,orig){ if(!str) return orig||Date.now(); const parts=str.
 function sameMonth(ts){ return ym(ts)===nowYM(); }
 
 function monthSpentTotal(p){ return p.transactions.filter(t=>sameMonth(t.ts)).reduce((s,t)=>s+t.amount,0); }
-function catMeta(cat){ if(TYPE_META[cat]) return TYPE_META[cat]; const p=currentProfile(); if(p&&p.customTypes){ const c=p.customTypes.find(x=>x.name===cat); if(c) return {icon:c.icon,color:c.color}; } return {icon:'📦',color:'#B0B4C8'}; }
-function allTypes(p){ const customs=((p&&p.customTypes)||[]).map(c=>c.name); return PURCHASE_TYPES.filter(t=>t!=='其他').concat(customs).concat(['其他']); }
-function allMotivs(p){ return MOTIVATIONS.concat(((p&&p.customMotivs)||[])); }
+function catMeta(cat){ const p=currentProfile(); if(TYPE_META[cat]){ const meta=TYPE_META[cat]; if(p&&p.builtinIcons&&p.builtinIcons[cat]) return {icon:p.builtinIcons[cat],color:meta.color}; return meta; } if(p&&p.customTypes){ const c=p.customTypes.find(x=>x.name===cat); if(c) return {icon:c.icon,color:c.color}; } return {icon:'📦',color:'#B0B4C8'}; }
+function allTypes(p){ const hidden=((p&&p.hiddenBuiltins)||[]); const customs=((p&&p.customTypes)||[]).map(c=>c.name); const built=PURCHASE_TYPES.filter(t=>t!=='其他'&&hidden.indexOf(t)<0&&customs.indexOf(t)<0); return built.concat(customs).concat(['其他']); }
+function allMotivs(p){ const hidden=((p&&p.hiddenBuiltinMotivs)||[]); const customIds=((p&&p.customMotivs)||[]).map(m=>m.id); const built=MOTIVATIONS.filter(m=>hidden.indexOf(m.id)<0&&customIds.indexOf(m.id)<0).map(m=>{ const ic=(p&&p.builtinMotivIcons&&p.builtinMotivIcons[m.id])||m.emoji; return {id:m.id,emoji:ic}; }); return built.concat(((p&&p.customMotivs)||[])); }
 function motivMeta(name){ return MOTIV_COLORS[name]||{bg:'rgba(124,92,252,.1)',color:'#7C5CFC'}; }
+function isBuiltinType(n){ return PURCHASE_TYPES.indexOf(n)>=0; }
+function isBuiltinMotiv(id){ return MOTIVATIONS.some(m=>m.id===id); }
 function advancePeriod(ts,period){ const d=new Date(ts); if(period==='daily')d.setDate(d.getDate()+1); else if(period==='weekly')d.setDate(d.getDate()+7); else if(period==='biweekly')d.setDate(d.getDate()+14); else if(period==='quarterly')d.setMonth(d.getMonth()+3); else d.setMonth(d.getMonth()+1); return d.getTime(); }
 function periodLabelCN(pr){ return {daily:'每天',weekly:'每周',biweekly:'每两周',monthly:'每月',quarterly:'每季'}[pr]||'每月'; }
 function processRecurrings(p){ if(!p.recurrings)return 0; let n=0; const now=Date.now(); p.recurrings.forEach(r=>{ if(r.active===false)return; let guard=0; while(r.nextRun&&r.nextRun<=now&&guard<500){ const meta=catMeta(r.category); p.transactions.push({id:'t'+r.nextRun+'_'+Math.floor(Math.random()*1e5),type:'spend',name:r.name,amount:r.amount,category:r.category,catIcon:meta.icon,catColor:meta.color,motivation:r.motivation,mood:null,recurring:true,ruleId:r.id,auto:true,ts:r.nextRun}); r.lastRun=r.nextRun; r.nextRun=advancePeriod(r.nextRun,r.period); n++; guard++; } }); return n; }
@@ -496,7 +517,7 @@ let recTimer=null;
 function currentPath(){ return (location.hash||'#/').slice(1)||'/'; }
 function navigate(path,params){
   if(path==='/coach'){ UI.chat.messages=null; UI.chat.showMemCard=false; UI.chat.showMemModal=false; UI.chat._draft=''; UI.chat.pendingQ=(params&&params.question)||null; }
-  if(path==='/add'){ UI.add._amtFocused=false; UI.add.receipt=null; UI.add._ocr=false; UI.add.date=''; UI.add.showNewGoal=false; UI.add.newName=''; UI.add.newTarget=''; UI.add.recurring=false; }
+  if(path==='/add'){ UI.add._amtFocused=false; UI.add.showNewGoal=false; UI.add.newName=''; UI.add.newTarget=''; UI.add.recurring=false; if(!UI.add._ocr){ UI.add.receipt=null; UI.add.date=''; } }
   UI._params=params||{};
   if(currentPath()===path){ render(); } else { location.hash=path; }
 }
@@ -511,14 +532,14 @@ function render(){
   else if(prof&&!prof.onboarded){ path='/onboarding'; }
   else if(path==='/login'||path==='/register'||path==='/onboarding') path='/';
   const sameRoute=(path===UI._lastPath);
-  const app=$('#app'); app.innerHTML=''; $('#overlay').innerHTML='';
-  app.className=sameRoute?'no-anim':'';
+  const app=$('#app'); app.innerHTML=''; const _ov=$('#overlay'); if(_ov)_ov.innerHTML=''; UI._dirtySheet=false;
+  app.className=sameRoute?'no-anim':'route-in';
   const fn=ROUTES[path]||ROUTES['/'];
   app.appendChild(fn(UI._params||{}));
   const NAV_ROUTES={'/':1,'/analysis':1,'/add':1,'/budget':1,'/budget/settings':1,'/review':1,'/profile':1};
   const nav=$('#nav'); nav.innerHTML='';
   if(NAV_ROUTES[path]){ nav.style.display='block'; nav.appendChild(bottomNav()); } else { nav.style.display='none'; }
-  if(scEl) scEl.scrollTop = sameRoute ? prevTop : 0;
+  if(scEl){ const target=sameRoute?prevTop:0; scEl.scrollTop=target; try{requestAnimationFrame(()=>{ if(scEl)scEl.scrollTop=target; });}catch(_){} }
   UI._lastPath=path;
 }
 
@@ -574,7 +595,7 @@ function donutSVG(data,total,size){
   data.forEach(d=>{ const len=total>0?(d.value/total)*C:0; rings+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="${sw}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-acc}" transform="rotate(-90 ${cx} ${cy})"/>`; acc+=len; });
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${rings}</svg>`;
 }
-function openOverlay(node){ const o=$('#overlay'); o.innerHTML=''; if(node) o.appendChild(node); }
+function openOverlay(node){ const o=$('#overlay'); o.innerHTML=''; if(node){ o.appendChild(node); } else { UI._dirtySheet=false; UI._closeArmed=false; } }
 function setInner(id,nodes){ const el=document.getElementById?document.getElementById(id):null; if(!el)return; el.innerHTML=''; (Array.isArray(nodes)?nodes:[nodes]).forEach(n=>{ if(n)el.appendChild(n); }); }
 
 /* ============================================================================
@@ -609,7 +630,7 @@ ROUTES['/login']=function(){
     if(!validPhone(phone)){ UI.auth.error='请输入正确的 11 位手机号'; return render(); }
     const u=Store.data.users[phone];
     if(!u||u.password!==pwd){ UI.auth.error='手机号或密码错误'; return render(); }
-    UI.auth.error=''; Store.data.session=phone; const _pr=currentProfile(); if(_pr)processRecurrings(_pr); commit();
+    UI.auth.error=''; Store.data.session=phone; const _pr=currentProfile(); let _n=0; if(_pr)_n=processRecurrings(_pr); commit(); if(_n>0) setTimeout(()=>showToast('已自动补记 '+_n+' 笔定期扣除'),500);
   };
   return h('div',{style:{minHeight:'852px',padding:'90px 28px 40px',background:'linear-gradient(170deg,#EDE8FF 0%,#FFE8F3 45%,#F8F9FE 100%)'}},
     brandHeader('你好，欢迎回来 👋'),
@@ -898,8 +919,8 @@ ROUTES['/add']=function(params){
   };
 
   /* chip 局部更新（不重建金额输入框，键盘不收起） */
-  const typeChips=()=>allTypes(p).map(t=>{const meta=catMeta(t);return h('button',{class:'pill tap',onclick:()=>{s.type=t;setInner('ar-types',typeChips());},style:{flexShrink:0,gap:'6px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:s.type===t?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.type===t?'#fff':'#6B7280',boxShadow:s.type===t?'0 3px 10px rgba(124,92,252,.28)':'none'}},h('span',{},meta.icon),h('span',{},t));}).concat([h('button',{class:'pill tap',onclick:()=>openOverlay(openAddCategory((nm)=>{UI.add.type=nm;render();})),style:{flexShrink:0,gap:'4px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),'新增'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageCategories()),style:{flexShrink:0,gap:'4px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:13})}),'编辑')]);
-  const motivChips=()=>allMotivs(p).map(m=>h('button',{class:'pill tap',onclick:()=>{s.motivation=m.id;setInner('ar-motivs',motivChips());},style:{flexShrink:0,gap:'6px',padding:'10px 16px',fontSize:'14px',fontWeight:700,whiteSpace:'nowrap',background:s.motivation===m.id?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.motivation===m.id?'#fff':'#6B7280',boxShadow:s.motivation===m.id?'0 4px 14px rgba(124,92,252,.3)':'none'}},h('span',{},m.emoji),h('span',{},m.id))).concat([h('button',{class:'pill tap',onclick:()=>openOverlay(openAddMotiv((nm)=>{UI.add.motivation=nm;render();})),style:{flexShrink:0,gap:'4px',padding:'10px 14px',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},h('span',{class:'ib',html:I.plus({color:'#7C5CFC',size:14})}),'新增'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageMotivations()),style:{flexShrink:0,gap:'4px',padding:'10px 14px',fontSize:'13px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:13})}),'编辑')]);
+  const typeChips=()=>allTypes(p).map(t=>{const meta=catMeta(t);return h('button',{class:'pill tap',onclick:()=>{s.type=t;setInner('ar-types',typeChips());},style:{flexShrink:0,gap:'6px',padding:'8px 12px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:s.type===t?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.type===t?'#fff':'#6B7280',boxShadow:s.type===t?'0 3px 10px rgba(124,92,252,.28)':'none'}},h('span',{},meta.icon),h('span',{},t));});
+  const motivChips=()=>allMotivs(p).map(m=>h('button',{class:'pill tap',onclick:()=>{s.motivation=m.id;setInner('ar-motivs',motivChips());},style:{flexShrink:0,gap:'6px',padding:'10px 16px',fontSize:'14px',fontWeight:700,whiteSpace:'nowrap',background:s.motivation===m.id?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#F4F5FB',color:s.motivation===m.id?'#fff':'#6B7280',boxShadow:s.motivation===m.id?'0 4px 14px rgba(124,92,252,.3)':'none'}},h('span',{},m.emoji),h('span',{},m.id)));
   const recurInner=()=>[
     h('div',{class:'between'},h('div',{},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},'是否定期扣除'),h('p',{style:{fontSize:'12px',color:'#B0B4C8'}},'如房租、订阅等周期性支出')),h('button',{class:'switch',onclick:()=>{s.recurring=!s.recurring;setInner('ar-recur',recurInner());},style:{background:s.recurring?'#7C5CFC':'#E2E4EF'}},h('div',{class:'knob',style:{transform:'translateX('+(s.recurring?'24px':'2px')+')'}}))),
     s.recurring?h('div',{style:{overflow:'hidden'}},h('p',{style:{fontSize:'12px',marginTop:'12px',marginBottom:'8px',color:'#7B6FAE',fontWeight:600}},'扣除周期'),h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap'}},RECURRING.map(opt=>h('button',{class:'tap',onclick:()=>{s.period=opt.id;setInner('ar-recur',recurInner());},style:{padding:'6px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,background:s.period===opt.id?'#7C5CFC':'#F4F5FB',color:s.period===opt.id?'#fff':'#6B7280'}},opt.label)))):null,
@@ -929,7 +950,7 @@ ROUTES['/add']=function(params){
       h('div',{style:{width:'36px'}}),
     ),
     h('div',{class:'px5 head-grad-2',style:{paddingTop:'12px',paddingBottom:'12px'}},
-      h('div',{style:{display:'flex',gap:'4px',padding:'4px',borderRadius:'16px',background:'rgba(255,255,255,.6)'}},[{id:'spend',icon:'💳',label:'消费记账'},{id:'save',icon:'🔥',label:'小目标攒钱'}].map(m=>h('button',{class:'ib grow tap',onclick:()=>{s.mode=m.id;render();},style:{gap:'6px',padding:'10px',borderRadius:'12px',fontSize:'14px',fontWeight:700,background:s.mode===m.id?(m.id==='spend'?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'linear-gradient(135deg,#FF6B9D,#FF8FB4)'):'transparent',color:s.mode===m.id?'#fff':'#9B8EC4',boxShadow:s.mode===m.id?('0 4px 12px '+(m.id==='spend'?'rgba(124,92,252,.3)':'rgba(255,107,157,.3)')):'none'}},m.icon+' '+m.label))),
+      h('div',{style:{display:'flex',gap:'4px',padding:'4px',borderRadius:'16px',background:'rgba(255,255,255,.6)'}},[{id:'spend',icon:'💳',label:'消费记账'},{id:'save',icon:'🔥',label:'小目标攒钱'}].map(m=>h('button',{class:'ib grow tap',onclick:()=>{if(s.mode===m.id)return;s.mode=m.id;render();refocusAmount();},style:{gap:'6px',padding:'10px',borderRadius:'12px',fontSize:'14px',fontWeight:700,background:s.mode===m.id?(m.id==='spend'?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'linear-gradient(135deg,#FF6B9D,#FF8FB4)'):'transparent',color:s.mode===m.id?'#fff':'#9B8EC4',boxShadow:s.mode===m.id?('0 4px 12px '+(m.id==='spend'?'rgba(124,92,252,.3)':'rgba(255,107,157,.3)')):'none'}},m.icon+' '+m.label))),
     ),
 
     h('div',{class:'px5',style:{marginTop:'4px',display:'flex',flexDirection:'column',gap:'12px'}},
@@ -937,7 +958,7 @@ ROUTES['/add']=function(params){
         h('p',{style:{fontSize:'12px',marginBottom:'8px',color:'#B0B4C8'}},s.mode==='spend'?'消费金额':'存入金额（应花未花 / 节省冲动消费）'),
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}},h('span',{style:{fontSize:'24px',color:'#9B8EC4',alignSelf:'flex-end',paddingBottom:'4px'}},'¥'),
           h('input',{id:'amt-input',type:'text',inputmode:'decimal',value:s.amount,placeholder:'0',
-            ref:(el)=>{ if(!UI.add._amtFocused){ setTimeout(()=>{try{el.focus();}catch(_){} },60); UI.add._amtFocused=true; } },
+            ref:(el)=>{ if(!UI.add._amtFocused){ setTimeout(()=>{try{el.focus({preventScroll:true});}catch(_){try{el.focus();}catch(__){}} },60); UI.add._amtFocused=true; } },
             oninput:(e)=>{ let v=e.target.value.replace(/[^0-9.]/g,''); const i=v.indexOf('.'); if(i>=0){ v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,''); } if(v.replace('.','').length>8)v=v.slice(0,9); s.amount=v; if(e.target.value!==v)e.target.value=v; },
             style:{flex:1,minWidth:0,fontSize:'46px',fontWeight:900,color:s.mode==='save'?'#FF6B9D':'#1A1A2E',border:'none',outline:'none',background:'transparent',fontFamily:"'Plus Jakarta Sans',sans-serif",padding:0}}),
           s.mode==='spend'?h('button',{class:'ib tap','aria-label':'按住说话',onpointerdown:(e)=>{if(e&&e.preventDefault)e.preventDefault();startVoice();},style:{width:'44px',height:'44px',borderRadius:'14px',flexShrink:0,background:'linear-gradient(135deg,#7C5CFC,#B490FF)',boxShadow:'0 4px 12px rgba(124,92,252,.3)',touchAction:'none',userSelect:'none'},html:I.mic({color:'#fff',size:19,sw:2.2})}):null,
@@ -949,12 +970,12 @@ ROUTES['/add']=function(params){
           h('div',{class:'grow'},h('p',{style:{fontSize:'12px',color:'#3D3D5C',fontWeight:700}},s._ocr?'正在识别小票…':'已附小票图片'),h('p',{style:{fontSize:'10px',color:'#B0B4C8'}},s._ocr?'自动提取金额中，可稍候':'金额可在上方手动校正')),
           s._ocr?h('div',{style:{width:'16px',height:'16px',borderRadius:'50%',flexShrink:0,border:'2px solid #7C5CFC',borderTopColor:'transparent',animation:'spin .8s linear infinite'}}):h('button',{class:'ib',onclick:()=>{s.receipt=null;render();},style:{width:'24px',height:'24px',borderRadius:'50%',flexShrink:0,background:'#FFF0F5'},html:I.x({color:'#FF6B9D',size:12})}),
         ):null,
-        s.mode==='spend'?h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginBottom:'10px'}},'🎤 按住说话 · 📷 拍照/相册识别 · 也可直接键盘输入'):null,
+        s.mode==='spend'?h('p',{style:{fontSize:'11px',color:'#B0B4C8',marginBottom:'10px'}},'🎤 按住说话（松开结束，最长 15 秒）· 📷 拍照/相册识别 · 也可直接键盘输入'):null,
         s.mode==='spend'?h('input',{id:'ar-name',value:s.name,placeholder:'备注名称（不填则默认为该类别名）',class:'field',style:{fontSize:'13px',padding:'10px 12px'},oninput:(e)=>{s.name=e.target.value;}}):h('div',{},h('p',{style:{fontSize:'12px',marginBottom:'6px',color:'#9B8EC4'}},'这笔钱原本打算花在哪？（可选）'),h('input',{id:'ar-savedfrom',value:s.savedFrom,placeholder:'例：忍住没买的奶茶、没跟风的潮牌...',class:'field',style:{fontSize:'13px',padding:'10px 12px'},oninput:(e)=>{s.savedFrom=e.target.value;}})),
       ),
       s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{class:'between'},h('div',{class:'row',style:{gap:'8px'}},h('span',{class:'ib',html:I.calendar({color:'#7C5CFC',size:16})}),h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},'消费日期')),h('input',{id:'ar-date',type:'date',value:s.date||tsToInput(Date.now()),oninput:(e)=>{s.date=e.target.value;},style:{fontSize:'13px',padding:'8px 10px',borderRadius:'10px',border:'1.5px solid rgba(124,92,252,.18)',outline:'none',background:'#F8F9FE',color:'#1A1A2E',fontFamily:'inherit'}}))):null,
-      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('p',{style:{fontSize:'14px',marginBottom:'12px',color:'#1A1A2E',fontWeight:800}},'消费类型'),h('div',{id:'ar-types',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},typeChips())):null,
-      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('p',{style:{fontSize:'14px',marginBottom:'12px',color:'#1A1A2E',fontWeight:800}},'购买动机'),h('div',{id:'ar-motivs',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},motivChips())):null,
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{class:'between',style:{marginBottom:'12px'}},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'消费类型'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageCategories()),style:{gap:'4px',padding:'6px 10px',fontSize:'11px',fontWeight:700,background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:12})}),'编辑')),h('div',{id:'ar-types',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},typeChips())):null,
+      s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{class:'between',style:{marginBottom:'12px'}},h('p',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:800}},'购买动机'),h('button',{class:'pill tap',onclick:()=>openOverlay(openManageMotivations()),style:{gap:'4px',padding:'6px 10px',fontSize:'11px',fontWeight:700,background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:12})}),'编辑')),h('div',{id:'ar-motivs',class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},motivChips())):null,
       s.mode==='spend'?h('div',{class:'card',style:{padding:'16px'}},h('div',{id:'ar-recur'},recurInner())):null,
 
       s.mode==='save'?h('div',{class:'card',style:{padding:'16px'}},
@@ -968,9 +989,23 @@ ROUTES['/add']=function(params){
   );
 };
 
-/* ---------- 语音录入（修复版：指针事件 + 浮层，不销毁按钮；接真实语音识别 + 中文数字解析） ---------- */
+/* 模式切换后把焦点还给金额输入框（在用户手势内同步聚焦，移动端键盘不收起） */
+function refocusAmount(){ try{ const el=$('#amt-input'); if(el){ el.focus({preventScroll:true}); const v=el.value; el.value=''; el.value=v; } }catch(_){ try{const el=$('#amt-input'); if(el)el.focus();}catch(__){}} }
+/* ---------- 语音录入（修复版：指针事件 + 浮层 + 完善错误提示 + 权限预请求） ---------- */
 const SPEECH_OK = !!(typeof window!=='undefined' && (window.SpeechRecognition||window.webkitSpeechRecognition));
-let _recTimer=null, _speech=null;
+const IS_SECURE = (typeof window!=='undefined')&&(window.isSecureContext===true || (location&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')));
+const IS_IOS = (typeof navigator!=='undefined')&&/iP(hone|od|ad)/.test(navigator.platform||'');
+const IS_WECHAT = (typeof navigator!=='undefined')&&/MicroMessenger/i.test(navigator.userAgent||'');
+function voiceUnavailReason(){
+  if(!IS_SECURE) return '浏览器要求 https 或 localhost 才能录音（当前不是安全上下文）。请把网页部署到 https 后再试';
+  if(!SPEECH_OK){
+    if(IS_IOS) return 'iOS Safari 暂不支持网页语音识别，请用输入框记录或换 Chrome/Edge 打开';
+    if(IS_WECHAT) return '微信内置浏览器不支持网页语音识别，请点右上角"在浏览器中打开"再试';
+    return '当前浏览器不支持语音识别 API，请换 Chrome/Edge 或手动输入';
+  }
+  return null;
+}
+let _recTimer=null, _speech=null, _speechAbort=false;
 function cn2num(s){
   const map={零:0,〇:0,一:1,壹:1,二:2,两:2,贰:2,三:3,叁:3,四:4,肆:4,五:5,伍:5,六:6,陆:6,七:7,柒:7,八:8,捌:8,九:9,玖:9};
   const unit={十:10,拾:10,百:100,佰:100,千:1000,仟:1000,万:10000};
@@ -992,45 +1027,80 @@ function parseVoice(text){
   if(name.length>12) name=name.slice(0,12);
   return {amount,name,type};
 }
-function showRecOverlay(){
+function showRecOverlay(hint){
   const o=$('#overlay'); if(!o) return; o.innerHTML='';
   o.appendChild(h('div',{},
     h('div',{class:'backdrop',style:{background:'rgba(26,26,46,.55)',zIndex:80}}),
-    h('div',{style:{position:'absolute',left:'50%',top:'42%',transform:'translate(-50%,-50%)',zIndex:85,textAlign:'center',width:'240px'}},
+    h('div',{style:{position:'absolute',left:'50%',top:'42%',transform:'translate(-50%,-50%)',zIndex:85,textAlign:'center',width:'260px'}},
       h('div',{class:'ib',style:{width:'92px',height:'92px',borderRadius:'50%',margin:'0 auto 18px',background:'linear-gradient(135deg,#FF4D6D,#FF6B9D)',boxShadow:'0 0 40px rgba(255,77,109,.6)'}},
         h('div',{class:'ib',style:{gap:'3px',height:'30px'}},[1,2,3,4,5].map(i=>h('div',{style:{width:'5px',background:'#fff',borderRadius:'3px',height:'8px',animation:'wave .7s infinite',animationDelay:(i*0.1)+'s'}})))),
       h('p',{id:'rec-sec',style:{color:'#fff',fontSize:'22px',fontWeight:900,marginBottom:'6px'}},'0s'),
-      h('p',{style:{color:'rgba(255,255,255,.85)',fontSize:'13px',fontWeight:600}},'正在聆听… 松开结束'),
-      h('p',{style:{color:'rgba(255,255,255,.6)',fontSize:'11px',marginTop:'4px'}},SPEECH_OK?'试试说"奶茶十八块"':'识别需通过本地服务器/HTTPS 打开'),
+      h('p',{id:'rec-hint',style:{color:'rgba(255,255,255,.85)',fontSize:'13px',fontWeight:600}},hint||'正在聆听… 松开结束'),
+      h('p',{style:{color:'rgba(255,255,255,.6)',fontSize:'11px',marginTop:'4px'}},'试试说"奶茶 18 块"'),
     ),
   ));
 }
+function setRecHint(txt){ const el=$('#rec-hint'); if(el)el.textContent=txt; }
 function hideRecOverlay(){ const o=$('#overlay'); if(o) o.innerHTML=''; }
+function openVoiceHelp(reason){
+  openOverlay(sheet('语音识别当前不可用',null,h('div',{},
+    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#FFF7EE',border:'1px solid rgba(255,183,71,.3)',marginBottom:'12px'}},h('p',{style:{fontSize:'12px',color:'#B08020',lineHeight:1.7}},reason)),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'临时办法：一句话手动补一笔'),
+    h('input',{id:'voice-manual',placeholder:'如：奶茶 18 块',class:'field',style:{marginBottom:'10px',fontSize:'14px'}}),
+    h('button',{class:'ib tap',onclick:()=>{ const v=($('#voice-manual').value||'').trim(); if(!v){ showToast('先输入一句话'); return; } const r=parseVoice(v); const s=UI.add; if(r.amount!=null&&!isNaN(r.amount)&&r.amount>0)s.amount=String(r.amount); if(r.name)s.name=r.name; if(r.type)s.type=r.type; openOverlay(null); render(); showToast('已解析：'+v.slice(0,16)); },style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'6px'}},'解析并填入'),
+    h('p',{style:{fontSize:'11px',color:'#B0B4C8',lineHeight:1.6}},'解决方案：\n1) 部署到 https 网址后（如 GitHub Pages/Vercel）再打开；\n2) 换 Chrome / Edge（安卓端）；\n3) 允许麦克风权限。'),
+  )));
+}
+function speechErrorMsg(err){
+  return ({
+    'not-allowed':'麦克风被禁用：请在浏览器设置里允许本网站使用麦克风',
+    'service-not-allowed':'系统未授权：请在系统权限里允许浏览器访问麦克风',
+    'no-speech':'没听到声音，请靠近手机再说一次',
+    'audio-capture':'麦克风不可用，检查设备或权限',
+    'network':'网络异常：语音识别需要联网',
+    'aborted':'录音被中断，请重试',
+    'bad-grammar':'识别语法错误',
+    'language-not-supported':'当前浏览器不支持中文识别'
+  })[err]||('识别失败：'+err);
+}
 function startVoice(){
   const s=UI.add; if(s.recording) return;
-  s.recording=true; s.recSec=0; s._transcript=null; s._speechErr=null;
-  showRecOverlay();
-  _recTimer=setInterval(()=>{ s.recSec++; const el=$('#rec-sec'); if(el)el.textContent=s.recSec+'s'; },1000);
+  const reason=voiceUnavailReason();
+  if(reason){ openVoiceHelp(reason); return; }
+  s.recording=true; s.recSec=0; s._transcript=null; s._speechErr=null; _speechAbort=false;
+  showRecOverlay('准备录音…');
+  _recTimer=setInterval(()=>{ s.recSec++; const el=$('#rec-sec'); if(el)el.textContent=s.recSec+'s'; if(s.recSec>=15){ setRecHint('时间到，正在解析…'); stopVoice(); } },1000);
   const SR=(typeof window!=='undefined')&&(window.SpeechRecognition||window.webkitSpeechRecognition);
-  if(SR){ try{ _speech=new SR(); _speech.lang='zh-CN'; _speech.interimResults=false; _speech.maxAlternatives=1;
-    _speech.onresult=(e)=>{ try{ s._transcript=e.results[0][0].transcript; }catch(_){} };
-    _speech.onerror=(e)=>{ s._speechErr=(e&&e.error)||'error'; };
-    _speech.start();
-  }catch(_){ _speech=null; } }
+  const boot=()=>{
+    try{ _speech=new SR(); _speech.lang='zh-CN'; _speech.interimResults=true; _speech.continuous=false; _speech.maxAlternatives=1;
+      _speech.onstart=()=>setRecHint('正在聆听… 松开结束');
+      _speech.onresult=(e)=>{ try{ let full=''; for(let i=0;i<e.results.length;i++){ full+=e.results[i][0].transcript; } s._transcript=full; setRecHint(full||'正在聆听…'); }catch(_){} };
+      _speech.onerror=(e)=>{ s._speechErr=(e&&e.error)||'error'; setRecHint(speechErrorMsg(s._speechErr)); };
+      _speech.onend=()=>{ if(s.recording){ /* iOS 有时提前 end，稍等等收尾 */ } };
+      _speech.start();
+    }catch(err){ s._speechErr='start-failed'; setRecHint('启动失败：'+((err&&err.message)||'未知')); }
+  };
+  // 先探测麦克风权限，出问题时立刻反馈
+  if(navigator&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{ try{ stream.getTracks().forEach(t=>t.stop()); }catch(_){} boot(); })
+      .catch(err=>{ s._speechErr='not-allowed'; setRecHint('麦克风被禁用：请允许权限后再试'); });
+  } else { boot(); }
 }
 function stopVoice(){
   const s=UI.add; if(!s.recording) return;
   s.recording=false;
   if(_recTimer){ clearInterval(_recTimer); _recTimer=null; }
   if(_speech){ try{ _speech.stop(); }catch(_){} }
-  hideRecOverlay();
+  // 保留浮层再展示 400ms，让用户看到最终识别文本或错误原因
   setTimeout(()=>{
+    hideRecOverlay();
     const t=(s._transcript||'').trim();
-    if(t){ const r=parseVoice(t); if(r.amount!=null&&!isNaN(r.amount)&&r.amount>0)s.amount=String(r.amount); if(r.name)s.name=r.name; if(r.type)s.type=r.type; showToast('已识别：'+t.slice(0,16)); }
-    else { showToast(SPEECH_OK?'没听清，请再说一次或手动输入':'该打开方式不支持语音，请手动输入金额'); }
-    s._transcript=null; _speech=null;
+    if(t){ const r=parseVoice(t); if(r.amount!=null&&!isNaN(r.amount)&&r.amount>0)s.amount=String(r.amount); if(r.name)s.name=r.name; if(r.type)s.type=r.type; showToast('已识别：'+t.slice(0,20)); }
+    else if(s._speechErr){ openVoiceHelp(speechErrorMsg(s._speechErr)+'\n\n如反复出现，请检查：\n• 是否通过 https / localhost 打开\n• 浏览器地址栏是否已允许麦克风\n• 系统设置里浏览器是否有麦克风权限'); }
+    else { showToast(SPEECH_OK?'没听清，请再说一次或手动输入':'该打开方式不支持语音，请手动输入'); }
+    s._transcript=null; s._speechErr=null; _speech=null;
     if(currentPath()==='/add') render();
-  },300);
+  },400);
 }
 
 /* ---------- 拍照 / 相册 识别（图片→金额） ---------- */
@@ -1045,11 +1115,12 @@ function compressImage(dataUrl,cb){
   try{
     const img=new Image();
     img.onload=()=>{ try{
-      const max=1000; let w=img.width,hh=img.height;
+      // 账单列表文字密集，保留更高分辨率以提升识别率（长图按较长边缩放）
+      const max=1600; let w=img.width,hh=img.height;
       if(w>max||hh>max){ if(w>=hh){ hh=Math.round(hh*max/w); w=max; } else { w=Math.round(w*max/hh); hh=max; } }
       const cv=document.createElement('canvas'); cv.width=w; cv.height=hh;
-      cv.getContext('2d').drawImage(img,0,0,w,hh);
-      cb(cv.toDataURL('image/jpeg',0.6));
+      const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,hh); ctx.drawImage(img,0,0,w,hh);
+      cb(cv.toDataURL('image/jpeg',0.72));
     }catch(e){ cb(dataUrl); } };
     img.onerror=()=>cb(dataUrl);
     img.src=dataUrl;
@@ -1066,8 +1137,16 @@ function finishOCR(amount,name,type,msg){
 function recognizeReceipt(dataUrl){
   const a=Store.data.ai;
   if(a&&a.enabled&&a.apiKey&&a.vision){
-    aiVision(dataUrl).then(r=>finishOCR(r.amount,r.name,r.type,r.amount?('AI 识别 ¥'+r.amount):'AI 未读出金额，请手动输入'))
-      .catch(()=>ocrTesseract(dataUrl));
+    // 优先尝试"列表式账单"（微信/支付宝/银行卡明细）
+    aiVisionList(dataUrl).then(list=>{
+      if(list&&list.length>=2){ finishOCRList(list,'AI 识别到 '+list.length+' 条支出，请核对','ai'); return; }
+      // 退回单条识别
+      aiVision(dataUrl).then(r=>finishOCR(r.amount,r.name,r.type,r.amount?('AI 识别 ¥'+r.amount):'AI 未读出金额，请手动输入'))
+        .catch(()=>ocrTesseract(dataUrl));
+    }).catch(()=>{
+      aiVision(dataUrl).then(r=>finishOCR(r.amount,r.name,r.type,r.amount?('AI 识别 ¥'+r.amount):'AI 未读出金额，请手动输入'))
+        .catch(()=>ocrTesseract(dataUrl));
+    });
     return;
   }
   ocrTesseract(dataUrl);
@@ -1075,8 +1154,14 @@ function recognizeReceipt(dataUrl){
 function ocrTesseract(dataUrl){
   if(typeof navigator!=='undefined'&&navigator.onLine===false){ finishOCR(null,null,null,'离线无法识别，图片已附上，请手动输入'); return; }
   loadTesseract().then(T=>{
-    T.recognize(dataUrl,'chi_sim+eng').then(res=>{ const text=(res&&res.data&&res.data.text)||''; const r=parseReceiptText(text); finishOCR(r.amount,r.name,r.type, r.amount?('识别金额 ¥'+r.amount+'，可校正'):'没读准金额，请手动输入'); })
-      .catch(()=>finishOCR(null,null,null,'识别失败，图片已附上，请手动输入'));
+    T.recognize(dataUrl,'chi_sim+eng').then(res=>{
+      const text=(res&&res.data&&res.data.text)||'';
+      // 先尝试列表解析（微信/支付宝/银行卡明细）
+      const list=parseReceiptListText(text);
+      if(list.length>=2){ finishOCRList(list,'本地识别到 '+list.length+' 条，可能有误，请核对','ocr'); return; }
+      const r=parseReceiptText(text);
+      finishOCR(r.amount,r.name,r.type, r.amount?('识别金额 ¥'+r.amount+'，可校正'):'没读准金额，请手动输入');
+    }).catch(()=>finishOCR(null,null,null,'识别失败，图片已附上，请手动输入'));
   }).catch(()=>finishOCR(null,null,null,'识别库加载失败（需联网），图片已附上'));
 }
 let _tess=null;
@@ -1109,12 +1194,147 @@ function aiVision(dataUrl){
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(d=>{ const c=d.choices[0].message.content; const mm=c.match(/\{[\s\S]*\}/); const o=JSON.parse(mm?mm[0]:c); return {amount:o.amount!=null?parseFloat(o.amount):null,name:o.name||'',type:PURCHASE_TYPES.indexOf(o.category)>=0?o.category:null}; });
 }
+function aiVisionList(dataUrl){
+  const a=Store.data.ai;
+  const today=tsToInput(Date.now());
+  const sys='你是中文账单截图识别助手，擅长识别微信支付/支付宝/银行卡的账单明细列表，也能识别单张小票。请仔细逐行阅读图片并识别所有【支出】条目，返回严格的 JSON 数组，元素形如：{"name":"商家或商品全称","amount":正数金额,"date":"YYYY-MM-DD","category":"餐饮/购物/娱乐/运动/交通/美妆/学习/其他 之一"}。\n严格规则：\n1) 金额左侧带减号(-)的是支出、带加号(+)的是收入。只保留支出，忽略所有收入、退款、转账收款、信用卡还款、零钱通收益、余额宝收益等；\n2) name 必须与图片文字完全一致（如"霸王茶姬""转账-转给苏海生""扫二维码付款-给某某"），不要臆造、不要输出乱码或英文占位；某条看不清就整条不要输出，宁缺毋滥；\n3) amount 为该条右侧的金额数字（去掉正负号与¥），如 82.16；\n4) date：账单每条下方通常有"6月30日 11:37"这类时间，请转成 YYYY-MM-DD。年份优先取截图顶部的"YYYY年M月"，若无则用今天('+today+')的年份；不要把当前日期填给所有条目；识别不到日期就留空字符串；\n5) category 依据商家/用途判断，拿不准填"其他"；\n6) 只返回 JSON 数组本身，不要 Markdown 代码块、不要任何解释文字。';
+  const url=a.baseUrl.replace(/\/+$/,'')+'/chat/completions';
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+a.apiKey},
+    body:JSON.stringify({model:a.model,messages:[{role:'system',content:sys},{role:'user',content:[{type:'text',text:'识别这张图片里的所有支出账单，按上面规则输出 JSON 数组'},{type:'image_url',image_url:{url:dataUrl}}]}],temperature:0,max_tokens:2000})})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(d=>{ let c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||''; c=c.replace(/```json/gi,'').replace(/```/g,''); const mm=c.match(/\[[\s\S]*\]/); if(mm) c=mm[0]; const arr=JSON.parse(c); if(!Array.isArray(arr)) throw new Error('not-array');
+      return arr.map(o=>({name:(o.name||'').toString().trim(),amount:o.amount!=null?parseFloat(String(o.amount).replace(/[^0-9.]/g,'')):null,date:normDate((o.date||'').toString().trim()),category:PURCHASE_TYPES.indexOf(o.category)>=0?o.category:'其他'}))
+        .filter(x=>x.name&&x.amount&&x.amount>0&&!/^(退款|收入|转账收款|信用卡还款)/.test(x.name)); });
+}
+function normDate(s){ if(!s)return''; const m=s.match(/(20\d{2})\D{1,2}(\d{1,2})\D{1,2}(\d{1,2})/); if(m){ const mm=parseInt(m[2]),dd=parseInt(m[3]); if(mm>=1&&mm<=12&&dd>=1&&dd<=31) return m[1]+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0'); } const m2=s.match(/^(\d{1,2})\D{1,2}(\d{1,2})$/); if(m2){ const y=new Date().getFullYear(),mm=parseInt(m2[1]),dd=parseInt(m2[2]); let yy=y; let d=new Date(yy,mm-1,dd); if(d.getTime()>Date.now()+86400000)yy-=1; if(mm>=1&&mm<=12&&dd>=1&&dd<=31) return yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0'); } return ''; }
+function parseReceiptListText(text){
+  // 从多行 OCR 文本中还原"名称 + 金额 + 日期"（微信/支付宝/银行卡明细）
+  // OCR 对这类彩色截图识别质量有限，这里以"稳"为主：宁可漏读，也不制造幻影账单
+  const lines=(text||'').replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const nowY=new Date().getFullYear();
+  let year=null; const ym=text.match(/(20\d{2})\s*年/); if(ym)year=parseInt(ym[1]);
+  const skipKw=/收入|退款|返现|存入|转入|转账收款|信用卡还款|已退款|入账|余额|收支统计|全部账单|查找交易|支出\s*[¥￥]|收入\s*[¥￥]/;
+  const KW=[['餐饮',/餐|饭|奶茶|咖啡|超市|食|烤|火锅|外卖|美团|饿了么|瑞幸|星巴克|喜茶|蜜雪|茶姬|锅|烧/],['交通',/滴滴|出租|地铁|公交|加油|停车|高铁|机票|铁路|飞猪|携程|网约车|单车|哈啰|青桔/],['购物',/服饰|衣|鞋|商场|百货|优衣|zara|京东|淘宝|天猫|拼多多|唯品会|超市|便利/i],['娱乐',/影院|电影|ktv|游戏|steam|视频会员|音乐|演唱/i],['美妆',/美妆|护肤|化妆|丝芙兰|口红|面膜|香水/],['学习',/书|课程|学习|培训|考试|网课|极客|文具/],['运动',/健身|跑步|运动|游泳|球|瑜伽|keep|超级猩猩/i]];
+  const catFor=(s)=>{ for(const k of KW){ if(k[1].test(s)) return k[0]; } return '其他'; };
+  const cjk=(s)=>((s||'').match(/[一-龥]/g)||[]).length;
+  // 金额：微信/支付宝金额一定带"符号(-/+)/小数(.dd)/¥"之一，用它区分金额与"时间11:37/订单号"
+  const timeRe=/\d{1,2}:\d{2}(?::\d{2})?/g;
+  const moneyRe=/([+\-＋－])?\s*([¥￥])?\s*(\d[\d,]*(?:\.\d{1,2})?)\s*$/;
+  const dateRe=/(?:(20\d{2})\s*年)?\s*(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]/;
+  const cleanName=(s)=>s.replace(timeRe,' ').replace(moneyRe,' ').replace(dateRe,' ').replace(/[¥￥]/g,' ').replace(/^[-＋+－·]\s*/,'').replace(/\s{2,}/g,' ').trim();
+  const dateStrOf=(dm)=>{ let yy=dm[1]?parseInt(dm[1]):(year||nowY); const mm=parseInt(dm[2]), dd=parseInt(dm[3]); if(!(mm>=1&&mm<=12&&dd>=1&&dd<=31))return ''; let d=new Date(yy,mm-1,dd); if(d.getTime()>Date.now()+86400000){ yy-=1; } return yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0'); };
+  const items=[];
+  let pending=null; // {name, amount, sign, date}
+  const pushPending=()=>{ if(pending&&pending.amount!=null){ items.push(pending); } pending=null; };
+  lines.forEach(line=>{
+    const noTime=line.replace(timeRe,' ');
+    const dm=line.match(dateRe);
+    const mt=noTime.match(moneyRe);
+    const isMoney=mt && (mt[1]||mt[2]||/\.\d{1,2}$/.test(mt[3]||''));  // 需带 符号/¥/两位小数 才算金额
+    if(isMoney){
+      const sign=(mt[1]==='+'||mt[1]==='＋')?'+':'-';
+      const amount=parseFloat((mt[3]||'').replace(/,/g,''));
+      const nameHere=cleanName(line);
+      if(sign==='+'||skipKw.test(nameHere)){ pushPending(); return; }  // 收入/汇总行 → 跳过
+      if(pending&&pending.amount==null){ pending.amount=amount; pending.sign=sign; if(cjk(nameHere)>cjk(pending.name))pending.name=nameHere; }
+      else { pushPending(); pending={name:nameHere,amount:amount,sign:sign,date:''}; }
+      if(dm){ const ds=dateStrOf(dm); if(ds)pending.date=ds; pushPending(); }
+      return;
+    }
+    // 日期行 → 绑定上一笔并结算
+    if(dm){ const ds=dateStrOf(dm); if(pending){ if(ds)pending.date=ds; pushPending(); } return; }
+    // 纯文本行：可能是被 OCR 分行的名称
+    const nm=cleanName(line);
+    if(cjk(nm)>=1&&nm.length<=30&&!/^\d+$/.test(nm)){
+      if(pending&&pending.amount!=null) pushPending();
+      if(!pending) pending={name:nm,amount:null,sign:'-',date:''};
+      else if(pending.amount==null&&cjk(nm)>cjk(pending.name)) pending.name=nm;
+    }
+  });
+  pushPending();
+  // 过滤：收入(+)、退款/收入关键词、乱码名称
+  const out=items.filter(it=>{
+    if(it.amount==null||!(it.amount>0)||it.amount>=1000000) return false;
+    if(it.sign==='+') return false;
+    if(skipKw.test(it.name)) return false;
+    const c=cjk(it.name), total=(it.name||'').replace(/\s/g,'').length;
+    if(c===0) return false;                       // 无中文，几乎必是乱码
+    if(total>=4 && c/total<0.5) return false;      // 中文占比过低 → 图标/表头乱码
+    return true;
+  }).map(it=>({name:(it.name||'').slice(0,24)||'未命名',amount:it.amount,category:catFor(it.name),date:it.date||''}));
+  const seen={};
+  return out.filter(x=>{ const k=x.name+'|'+x.amount+'|'+x.date; if(seen[k])return false; seen[k]=1; return true; });
+}
+function finishOCRList(items,msg,source){
+  const s=UI.add; s._ocr=false;
+  if(currentPath()==='/add') render();
+  openOverlay(openBatchConfirm(items,msg,source||'ocr'));
+}
+function openBatchConfirm(items,msg,source){
+  const p=currentProfile();
+  const sig=items.map(x=>x.name+x.amount+(x.date||'')).join('|');
+  if(!UI.batch||UI.batch._sig!==sig){
+    UI.batch={_sig:sig,_src:source||'ocr',items:items.map(x=>Object.assign({_pick:true,date:''},x))};
+  }
+  const b=UI.batch;
+  const isOCR=(b._src==='ocr');
+  const reopen=()=>openOverlay(openBatchConfirm(items,msg,source));
+  const doImport=()=>{
+    const p=currentProfile();
+    const chosen=b.items.filter(x=>x._pick&&x.amount>0);
+    if(!chosen.length){ showToast('请至少选中 1 条'); return; }
+    chosen.forEach(x=>{
+      const cat=allTypes(p).indexOf(x.category)>=0?x.category:'其他';
+      const meta=catMeta(cat);
+      const ts=x.date?(inputToTs(x.date)||Date.now()):Date.now();
+      const nm=(x.name||'').trim()||cat;
+      // 批量导入不逐条挂截图（避免十几笔重复存同一张大图撑爆数据库）
+      p.transactions.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,5),name:nm,amount:parseFloat(x.amount)||0,category:cat,catIcon:meta.icon,catColor:meta.color,motivation:'刚需维生',mood:null,ts,receipt:null});
+    });
+    Store.save();
+    UI.batch=null;
+    openOverlay(null);
+    UI.add.receipt=null; UI.add._ocr=false;
+    render();
+    showToast('已批量入账 '+chosen.length+' 条 ✅');
+  };
+  const gotoAI=()=>{ UI.batch=null; openOverlay(null); openAISettings(); };
+  const editRow=(row,idx)=>h('div',{style:{padding:'10px 12px',borderRadius:'12px',background:row._pick?'#F8F9FE':'#F4F5FB',border:'1.5px solid '+(row._pick?'rgba(124,92,252,.12)':'transparent'),opacity:row._pick?1:.55,marginBottom:'8px'}},
+    h('div',{class:'row',style:{gap:'10px',alignItems:'center',marginBottom:'8px'}},
+      h('button',{class:'ib tap','aria-label':'选中',onclick:()=>{row._pick=!row._pick;reopen();},style:{width:'24px',height:'24px',borderRadius:'6px',flexShrink:0,background:row._pick?'#7C5CFC':'#fff',border:'1.5px solid '+(row._pick?'#7C5CFC':'#C8CBD8'),color:'#fff',fontSize:'14px',fontWeight:900}},row._pick?'✓':''),
+      h('input',{value:row.name,placeholder:'名称',class:'field',style:{flex:1,fontSize:'13px',padding:'8px 10px'},oninput:(ev)=>{row.name=ev.target.value;}}),
+      h('div',{class:'row',style:{gap:'4px',flexShrink:0}},h('span',{style:{fontSize:'12px',color:'#9B8EC4'}},'¥'),h('input',{type:'number',inputmode:'decimal',value:row.amount,class:'field',style:{width:'76px',fontSize:'13px',padding:'8px 10px',textAlign:'right'},oninput:(ev)=>{row.amount=parseFloat(ev.target.value)||0;}})),
+    ),
+    h('div',{class:'row',style:{gap:'8px',alignItems:'center',marginBottom:'8px'}},
+      h('span',{class:'ib',html:I.calendar({color:'#9B8EC4',size:13})}),
+      h('input',{type:'date',value:row.date||'',oninput:(ev)=>{row.date=ev.target.value;},style:{fontSize:'12px',padding:'6px 8px',borderRadius:'8px',border:'1.5px solid '+(row.date?'rgba(124,92,252,.25)':'rgba(255,107,157,.35)'),outline:'none',background:'#fff',color:row.date?'#1A1A2E':'#B0B4C8',fontFamily:'inherit'}}),
+      row.date?null:h('span',{style:{fontSize:'11px',color:'#E8869E'}},'未读到日期 · 默认今天'),
+    ),
+    h('div',{class:'row noscroll',style:{gap:'6px',overflowX:'auto',paddingBottom:'2px'}},allTypes(p).map(t=>{const on=row.category===t;const mt=catMeta(t);return h('button',{class:'tap',onclick:()=>{row.category=t;reopen();},style:{flexShrink:0,padding:'5px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#fff',color:on?'#fff':'#6B7280',border:'1px solid '+(on?'transparent':'#EEF0F8')}},mt.icon+' '+t);})),
+  );
+  const pickedN=b.items.filter(x=>x._pick&&x.amount>0).length;
+  const totalAmt=b.items.filter(x=>x._pick&&x.amount>0).reduce((s,x)=>s+parseFloat(x.amount||0),0);
+  const body=h('div',{},
+    isOCR?h('div',{style:{padding:'10px 12px',borderRadius:'10px',background:'rgba(255,183,71,.1)',border:'1px solid rgba(255,183,71,.3)',marginBottom:'10px'}},
+      h('p',{style:{fontSize:'12px',color:'#B0761A',lineHeight:1.6,marginBottom:'8px'}},'⚠️ 这是「本地识别」结果，对微信/支付宝彩色截图精度有限：商家名可能乱码、可能漏读日期或多识别。请逐条核对，删掉不对的（取消勾选）。'),
+      h('button',{class:'ib tap',onclick:gotoAI,style:{padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'开启 AI 精准识别（强烈推荐）')
+    ):null,
+    h('div',{style:{padding:'10px 12px',borderRadius:'10px',background:'rgba(124,92,252,.06)',marginBottom:'10px'}},h('p',{style:{fontSize:'12px',color:'#7B6FAE',lineHeight:1.7}},(msg||'请确认识别到的账单')+' · 已选 '+pickedN+' 条 · 合计 ¥'+fmt(totalAmt))),
+    h('div',{style:{maxHeight:'46vh',overflowY:'auto',marginBottom:'12px',WebkitOverflowScrolling:'touch'}},b.items.length?b.items.map(editRow):h('p',{style:{textAlign:'center',fontSize:'13px',color:'#B0B4C8',padding:'24px 0'}},'没有识别到有效条目，请手动输入或换清晰截图')),
+    h('div',{class:'row',style:{gap:'10px'}},
+      h('button',{class:'ib tap',onclick:()=>{ UI.batch=null; openOverlay(null); },style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#F4F5FB'}},'取消'),
+      h('button',{class:'ib tap',onclick:doImport,style:{flex:2,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'导入 '+pickedN+' 条'),
+    ),
+  );
+  return sheet('确认账单','可勾选/改名称金额日期与类别，未选中的不会入账',body);
+}
 
 /* ---------- global toast ---------- */
 let toastTimer=null;
 function showToast(msg){
   const o=$('#overlay');
-  const t=h('div',{class:'toast',style:{bottom:'110px'}},h('span',{class:'ib',html:I.check({color:'#fff',size:14})}),msg);
+  const rec=!!(UI.add&&UI.add.recording);
+  const t=h('div',{class:'toast',style:{bottom:rec?'170px':'110px',zIndex:rec?95:90}},h('span',{class:'ib',html:I.check({color:'#fff',size:14})}),msg);
   o.appendChild(t);
   if(toastTimer)clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>{ if(t.parentNode)t.parentNode.removeChild(t); },1800);
@@ -1122,7 +1342,7 @@ function showToast(msg){
 
 /* ---------- 通用底部弹层 ---------- */
 function sheet(title,sub,bodyNode){
-  const close=()=>openOverlay(null);
+  const close=()=>{ if(UI._dirtySheet && !UI._closeArmed){ UI._closeArmed=true; showToast('有未保存的修改，再点一次放弃'); setTimeout(()=>{UI._closeArmed=false;},2500); return; } openOverlay(null); };
   return h('div',{},
     h('div',{class:'backdrop',onclick:close}),
     h('div',{class:'sheet',style:{maxHeight:'88%'}},
@@ -1160,9 +1380,9 @@ function openTxEdit(txId){
       h('div',{style:{flex:1}},h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'日期'),h('input',{type:'date',value:e.date,class:'field',style:{fontSize:'14px'},oninput:(ev)=>{e.date=ev.target.value;}})),
     ),
     h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'类型'),
-    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allTypes(p).map(t=>chip(catMeta(t).icon+' '+t,e.category===t,()=>{e.category=t;reopen();})).concat([h('button',{class:'tap',onclick:()=>openOverlay(openAddCategory((nm)=>{UI.txEdit.category=nm;openOverlay(openTxEdit(UI.txEdit.id));})),style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#fff',color:'#7C5CFC',border:'1.5px dashed rgba(124,92,252,.4)'}},'+ 新增类别')])),
+    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allTypes(p).map(t=>chip(catMeta(t).icon+' '+t,e.category===t,()=>{e.category=t;reopen();})).concat([h('button',{class:'tap',onclick:()=>openOverlay(openManageCategories()),style:{flexShrink:0,gap:'4px',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:12})}),'编辑')])),
     h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'动机'),
-    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allMotivs(p).map(m=>chip(m.emoji+' '+m.id,e.motivation===m.id,()=>{e.motivation=m.id;reopen();}))),
+    h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',marginBottom:'12px',paddingBottom:'2px'}},allMotivs(p).map(m=>chip(m.emoji+' '+m.id,e.motivation===m.id,()=>{e.motivation=m.id;reopen();})).concat([h('button',{class:'tap',onclick:()=>openOverlay(openManageMotivations()),style:{flexShrink:0,gap:'4px',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:'#F0ECFF',color:'#7C5CFC'}},h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:12})}),'编辑')])),
     h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'6px'}},'心情'),
     h('div',{class:'row',style:{gap:'8px',marginBottom:'18px'}},
       chip('😊 真香',e.mood==='great',()=>{e.mood=e.mood==='great'?null:'great';reopen();}),
@@ -1215,6 +1435,74 @@ function openGoalEdit(goalId){
   );
   return sheet('编辑心愿','改名称/图标/目标金额',body);
 }
+function openGoalManage(){
+  const p=currentProfile();
+  if(!UI.goalManage) UI.goalManage={adding:false,icon:'🎯',name:'',target:''};
+  const gm=UI.goalManage;
+  const reopenSheet=()=>openOverlay(openGoalManage());   // 仅用于"新增表单"展开/收起（一次性动作）
+  const H=64;
+  const rowFor=(g,i)=>{
+    let drag=null;
+    return h('div',{
+      'data-id':g.id,
+      style:{position:'relative',height:H+'px',padding:'12px',borderRadius:'12px',background:'#F8F9FE',display:'flex',alignItems:'center',gap:'10px',touchAction:'none',userSelect:'none',boxSizing:'border-box',cursor:'grab'},
+      onpointerdown:(ev)=>{
+        try{ev.currentTarget.setPointerCapture(ev.pointerId);}catch(_){}
+        const rowEl=ev.currentTarget;
+        drag={startY:ev.clientY,index:i,el:rowEl,curY:0};
+        rowEl.style.zIndex='10'; rowEl.style.cursor='grabbing'; rowEl.style.boxShadow='0 8px 24px rgba(124,92,252,.25)'; rowEl.style.background='#fff';
+      },
+      onpointermove:(ev)=>{ if(!drag) return; const dy=ev.clientY-drag.startY; drag.curY=dy; drag.el.style.transform='translateY('+dy+'px)';
+        // 拖到列表容器上下边缘时自动滚动
+        const sc=drag.el.closest('.noscroll'); if(sc){ const r=sc.getBoundingClientRect(), edge=54, step=10; if(ev.clientY<r.top+edge && sc.scrollTop>0){ sc.scrollTop-=step; drag.startY+=step; } else if(ev.clientY>r.bottom-edge && sc.scrollTop+sc.clientHeight<sc.scrollHeight){ sc.scrollTop+=step; drag.startY-=step; } } },
+      onpointerup:(ev)=>{
+        if(!drag) return;
+        const shift=Math.round(drag.curY/H);
+        const from=drag.index, to=Math.max(0,Math.min(p.goals.length-1,from+shift));
+        drag.el.style.transform=''; drag.el.style.zIndex=''; drag.el.style.cursor='grab'; drag.el.style.boxShadow=''; drag.el.style.background='#F8F9FE';
+        drag=null;
+        if(to!==from){ const item=p.goals.splice(from,1)[0]; p.goals.splice(to,0,item); Store.save(); }
+        rebuildList();   // 局部刷新，不重新弹窗
+      },
+      onpointercancel:()=>{ if(drag){ drag.el.style.transform=''; drag.el.style.zIndex=''; drag.el.style.background='#F8F9FE'; drag=null; } },
+    },
+      h('span',{style:{fontSize:'18px',color:'#C8CBD8',flexShrink:0}},'≡'),
+      h('div',{class:'ib',style:{width:'34px',height:'34px',borderRadius:'12px',fontSize:'19px',background:'#fff',flexShrink:0}},g.icon),
+      h('div',{class:'grow',style:{minWidth:0}},h('p',{class:'trunc',style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},g.name),h('p',{style:{fontSize:'11px',color:'#9B8EC4'}},'¥'+fmt(g.current)+' / ¥'+fmt(g.target))),
+      h('div',{class:'row',style:{gap:'4px',flexShrink:0}},
+        i>0?h('button',{class:'ib tap','aria-label':'上移',onpointerdown:(ev)=>{ev.stopPropagation();},onclick:(ev)=>{ ev.stopPropagation(); const item=p.goals.splice(i,1)[0]; p.goals.splice(i-1,0,item); Store.save(); rebuildList(); },style:{width:'30px',height:'30px',borderRadius:'50%',background:'#F0ECFF',color:'#7C5CFC',fontWeight:800}},'↑'):h('div',{style:{width:'30px'}}),
+        i<p.goals.length-1?h('button',{class:'ib tap','aria-label':'下移',onpointerdown:(ev)=>{ev.stopPropagation();},onclick:(ev)=>{ ev.stopPropagation(); const item=p.goals.splice(i,1)[0]; p.goals.splice(i+1,0,item); Store.save(); rebuildList(); },style:{width:'30px',height:'30px',borderRadius:'50%',background:'#F0ECFF',color:'#7C5CFC',fontWeight:800}},'↓'):h('div',{style:{width:'30px'}}),
+      ),
+    );
+  };
+  const rebuildList=()=>setInner('goal-manage-list', p.goals.length?p.goals.map(rowFor):[h('p',{style:{textAlign:'center',fontSize:'13px',color:'#B0B4C8',padding:'18px 0'}},'还没有心愿，点上方"新增愿望"添加一个吧')]);
+  const createWish=()=>{
+    const nm=(gm.name||'').trim(); const tg=parseInt((gm.target||'').replace(/[^0-9]/g,''))||0;
+    if(!nm){ showToast('请填写心愿名称'); return; }
+    if(tg<=0){ showToast('请填写目标金额'); return; }
+    const g={id:'g'+Date.now(),name:nm,icon:gm.icon||'🎯',current:0,target:tg,color:GOAL_COLORS[p.goals.length%GOAL_COLORS.length],createdAt:Date.now()};
+    p.goals.push(g); UI.budget.goalId=g.id; Store.save();
+    gm.adding=false; gm.name=''; gm.target=''; gm.icon='🎯';
+    reopenSheet();  // 收起表单 + 显示新条目（一次性）
+    showToast('已新增心愿 ✨');
+  };
+  const addBlock=gm.adding
+    ? h('div',{style:{padding:'14px',borderRadius:'14px',background:'#F8F9FE',border:'1px solid rgba(124,92,252,.12)',marginBottom:'12px'}},
+        h('div',{class:'between',style:{marginBottom:'10px'}},h('p',{style:{fontSize:'13px',color:'#7C5CFC',fontWeight:800}},'新增愿望'),h('button',{class:'ib tap',onclick:()=>{gm.adding=false;reopenSheet();},html:I.x({color:'#B0B4C8',size:16})})),
+        h('div',{class:'row',style:{gap:'6px',flexWrap:'wrap',marginBottom:'10px'}},GOAL_ICONS.map(ic=>h('button',{class:'ib tap',onclick:()=>{gm.icon=ic;reopenSheet();},style:{width:'36px',height:'36px',borderRadius:'10px',fontSize:'18px',background:gm.icon===ic?'rgba(124,92,252,.12)':'#fff',border:'1.5px solid '+(gm.icon===ic?'#7C5CFC':'rgba(124,92,252,.12)')}},ic))),
+        h('input',{value:gm.name,placeholder:'心愿名称（如 iPad Pro / 一次旅行）',class:'field',style:{marginBottom:'8px',fontSize:'14px'},oninput:(ev)=>{gm.name=ev.target.value;}}),
+        h('div',{class:'row',style:{gap:'8px',marginBottom:'12px'}},h('span',{style:{fontSize:'13px',color:'#9B8EC4',whiteSpace:'nowrap'}},'目标金额 ¥'),h('input',{value:gm.target,type:'number',inputmode:'numeric',placeholder:'5000',class:'field',style:{fontSize:'14px'},oninput:(ev)=>{gm.target=ev.target.value;}})),
+        h('button',{class:'ib tap',onclick:createWish,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'创建心愿'),
+      )
+    : h('button',{class:'ib tap',onclick:()=>{gm.adding=true;reopenSheet();},style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'12px'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增愿望');
+  const body=h('div',{},
+    h('div',{style:{padding:'10px 12px',borderRadius:'10px',background:'rgba(124,92,252,.06)',marginBottom:'12px'}},h('p',{style:{fontSize:'12px',color:'#7B6FAE',lineHeight:1.7}},'在这里新增愿望、或长按拖动 / 点 ↑↓ 调整顺序，改动即时保存。')),
+    addBlock,
+    h('div',{id:'goal-manage-list',style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'10px'}},p.goals.length?p.goals.map(rowFor):[h('p',{style:{textAlign:'center',fontSize:'13px',color:'#B0B4C8',padding:'18px 0'}},'还没有心愿，点上方"新增愿望"添加一个吧')]),
+    h('button',{class:'ib tap',onclick:()=>{ UI.goalManage=null; openOverlay(null); render(); },style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},'完成'),
+  );
+  return sheet('管理心愿','新增愿望 · 拖动或箭头重排',body);
+}
 function openGoalNew(){
   if(!UI.goalNew) UI.goalNew={icon:'🎯',name:'',target:''};
   const e=UI.goalNew, p=currentProfile();
@@ -1231,12 +1519,15 @@ function openGoalNew(){
   );
   return sheet('新增心愿','给想要的东西定个小目标',body);
 }
-/* ---------- 新增/编辑 消费类别（自定义 + 符号库） ---------- */
+/* ---------- 新增/编辑 消费类别（自定义 + 符号库；支持内置） ---------- */
 function openAddCategory(onCreate,editName){
   const p=currentProfile();
-  const editing=editName?((p.customTypes||[]).find(c=>c.name===editName)):null;
+  const isBuiltin=editName?isBuiltinType(editName):false;
+  const editingCustom=editName?((p.customTypes||[]).find(c=>c.name===editName)):null;
+  const editingBuiltinIcon=isBuiltin?((p.builtinIcons&&p.builtinIcons[editName])||catMeta(editName).icon):null;
+  const editing=editName?(editingCustom||(isBuiltin?{name:editName,icon:editingBuiltinIcon,_builtin:true}:null)):null;
   const key=editName||'__new__';
-  if(!UI.addCat||UI.addCat._for!==key) UI.addCat={_for:key,name:editing?editing.name:'',icon:editing?editing.icon:'🏷️'};
+  if(!UI.addCat||UI.addCat._for!==key) UI.addCat={_for:key,name:editing?editing.name:'',icon:editing?editing.icon:'🏷️',transferTo:null,confirm:false};
   const e=UI.addCat;
   const reopen=()=>openOverlay(openAddCategory(onCreate,editName));
   const done=(nm)=>{ UI.addCat=null; Store.save(); openOverlay(null); if(onCreate)onCreate(nm); else render(); };
@@ -1244,6 +1535,23 @@ function openAddCategory(onCreate,editName){
     const nm=(e.name||'').trim();
     if(!nm){ showToast('请输入类别名称'); return; }
     if(editing){
+      if(isBuiltin){
+        // 内置：允许改图标；允许改名 → 视为"隐藏原内置 + 新建同名 custom（保留 tx 联动）"
+        if(nm===editName){
+          (p.builtinIcons=p.builtinIcons||{})[editName]=e.icon||catMeta(editName).icon;
+          showToast('已更新图标'); done(nm); return;
+        }
+        // 改名
+        if(allTypes(p).indexOf(nm)>=0){ showToast('「'+nm+'」已存在'); return; }
+        const old=editName;
+        (p.hiddenBuiltins=p.hiddenBuiltins||[]).push(old);
+        const color=(TYPE_META[old]&&TYPE_META[old].color)||CAT_COLORS[((p.customTypes||[]).length)%CAT_COLORS.length];
+        (p.customTypes=p.customTypes||[]).push({name:nm,icon:e.icon||catMeta(old).icon,color});
+        p.transactions.forEach(t=>{ if(t.category===old){ t.category=nm; const mt=catMeta(nm); t.catIcon=mt.icon; t.catColor=mt.color; } });
+        (p.recurrings||[]).forEach(r=>{ if(r.category===old) r.category=nm; });
+        showToast('已更新类别'); done(nm); return;
+      }
+      // 自定义
       if(nm!==editing.name && (allTypes(p).indexOf(nm)>=0||PURCHASE_TYPES.indexOf(nm)>=0)){ showToast('「'+nm+'」已存在'); return; }
       const old=editing.name; editing.name=nm; editing.icon=e.icon||editing.icon;
       p.transactions.forEach(t=>{ if(t.category===old){ t.category=nm; const mt=catMeta(nm); t.catIcon=mt.icon; t.catColor=mt.color; } });
@@ -1256,8 +1564,26 @@ function openAddCategory(onCreate,editName){
       showToast('已新增类别「'+nm+'」'); done(nm);
     }
   };
-  const del=()=>{ if(!editing)return; const old=editing.name; p.customTypes=p.customTypes.filter(c=>c.name!==old); p.transactions.forEach(t=>{ if(t.category===old){ t.category='其他'; const mt=catMeta('其他'); t.catIcon=mt.icon; t.catColor=mt.color; } }); showToast('已删除「'+old+'」，相关账单转为「其他」'); done('其他'); };
+  const del=()=>{
+    if(!editing)return;
+    const old=editing.name||editName;
+    if(old==='其他'){ showToast('「其他」为兜底类别，不可删除'); return; }
+    const tt=e.transferTo||'其他';
+    if(isBuiltin){
+      (p.hiddenBuiltins=p.hiddenBuiltins||[]).push(old);
+      if(p.builtinIcons)delete p.builtinIcons[old];
+    } else {
+      p.customTypes=(p.customTypes||[]).filter(c=>c.name!==old);
+    }
+    p.transactions.forEach(t=>{ if(t.category===old){ t.category=tt; const mt=catMeta(tt); t.catIcon=mt.icon; t.catColor=mt.color; } });
+    (p.recurrings||[]).forEach(r=>{ if(r.category===old) r.category=tt; });
+    showToast('已删除「'+old+'」，账单转为「'+tt+'」'); done(tt);
+  };
+  const others=allTypes(p).filter(t=>t!==editName);
+  const hasTx=editName?p.transactions.some(t=>t.category===editName):false;
+  const tchip=(label,on,onclick)=>h('button',{class:'tap',onclick,style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:on?'#fff':'#6B7280'}},label);
   const body=h('div',{},
+    isBuiltin?h('div',{style:{padding:'8px 12px',borderRadius:'10px',background:'rgba(124,92,252,.06)',marginBottom:'12px',fontSize:'11px',color:'#7B6FAE'}},'💡 内置类别，可改名 / 换图标 / 删除；改名或删除后不影响历史账单（自动跟随）'):null,
     h('div',{class:'row',style:{gap:'12px',alignItems:'center',marginBottom:'14px'}},
       h('div',{class:'ib',style:{width:'52px',height:'52px',borderRadius:'14px',fontSize:'26px',flexShrink:0,background:'#F4F5FB',border:'1.5px solid rgba(124,92,252,.15)'}},e.icon),
       h('input',{value:e.name,placeholder:'类别名称（如 宠物 / 房租 / 数码）',class:'field',style:{flex:1,fontSize:'15px'},oninput:(ev)=>{e.name=ev.target.value;}}),
@@ -1266,28 +1592,43 @@ function openAddCategory(onCreate,editName){
     h('div',{class:'noscroll',style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:'6px',maxHeight:'200px',overflowY:'auto',marginBottom:'18px'}},
       SYMBOLS.map(sy=>h('button',{class:'ib tap',onclick:()=>{e.icon=sy;reopen();},style:{height:'40px',borderRadius:'10px',fontSize:'20px',background:e.icon===sy?'rgba(124,92,252,.14)':'#F8F9FE',border:'1.5px solid '+(e.icon===sy?'#7C5CFC':'transparent')}},sy))),
     h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:editing?'10px':'0'}},editing?'保存修改':'创建类别'),
-    editing?h('button',{class:'ib tap',onclick:del,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该类别'):null,
+    editing&&editName!=='其他'?(
+      e.confirm?h('div',{style:{padding:'14px',borderRadius:'14px',background:'#FFF0F5',border:'1px solid rgba(255,107,157,.2)'}},
+        hasTx&&others.length?h('div',{},
+          h('p',{style:{fontSize:'12px',color:'#C04470',fontWeight:700,marginBottom:'8px'}},'该类别下有账单，转移到？（不选默认转「其他」）'),
+          h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px',marginBottom:'12px'}},others.map(o=>tchip(catMeta(o).icon+' '+o,e.transferTo===o,()=>{e.transferTo=(e.transferTo===o?null:o);reopen();}))),
+        ):null,
+        h('div',{class:'row',style:{gap:'10px'}},
+          h('button',{class:'ib tap',onclick:del,style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'#FF4D6D'}},'确认删除'),
+          h('button',{class:'ib tap',onclick:()=>{e.confirm=false;e.transferTo=null;reopen();},style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#fff'}},'取消'),
+        ),
+      ):h('button',{class:'ib tap',onclick:()=>{e.confirm=true;reopen();},style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该类别')
+    ):null,
   );
   return sheet(editing?'编辑类别':'新增消费类别',editing?'改名称/图标或删除':'取个名字、从符号库选个图标',body);
 }
 function openManageCategories(){
-  const p=currentProfile(); const customs=(p.customTypes||[]);
+  const p=currentProfile();
+  const list=allTypes(p);
   const reopen=()=>openOverlay(openManageCategories());
+  const row=(name)=>{const meta=catMeta(name);const builtin=isBuiltinType(name);const cnt=p.transactions.filter(t=>t.category===name).length;return h('button',{class:'between tap',onclick:()=>openOverlay(openAddCategory(reopen,name)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},meta.icon),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},name),builtin?h('span',{style:{fontSize:'10px',color:'#9B8EC4',padding:'2px 6px',borderRadius:'8px',background:'rgba(124,92,252,.08)'}},'内置'):null,cnt?h('span',{style:{fontSize:'10px',color:'#7C5CFC'}},cnt+'笔'):null),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}));};
   const body=h('div',{},
-    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'自定义类别（可改名 / 换图标 / 删除）'),
-    customs.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},customs.map(c=>h('button',{class:'between tap',onclick:()=>openOverlay(openAddCategory(reopen,c.name)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},c.icon),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},c.name)),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}))))
-      :h('p',{style:{fontSize:'12px',color:'#B0B4C8',textAlign:'center',padding:'12px 0 16px'}},'还没有自定义类别'),
-    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddCategory(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'14px'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增类别'),
-    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#F4F5FB'}},h('p',{style:{fontSize:'11px',color:'#9B8EC4',lineHeight:1.7}},'内置类别：'+PURCHASE_TYPES.join(' / ')+'（系统默认，不可删除）')),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'点任意类别可改名 / 换图标 / 删除 · 删除时会提示转移到哪里'),
+    h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},list.map(row)),
+    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddCategory(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增自定义类别'),
   );
-  return sheet('管理消费类别','增 / 删 / 改自定义类别',body);
+  return sheet('管理消费类别','编辑 / 新增 / 删除（含默认类别）',body);
 }
-/* ---------- 新增/编辑 购买动机 ---------- */
+/* ---------- 新增/编辑 购买动机（支持内置） ---------- */
 function openAddMotiv(onCreate,editName){
   const p=currentProfile();
-  const editing=editName?((p.customMotivs||[]).find(m=>m.id===editName)):null;
+  const isBuiltin=editName?isBuiltinMotiv(editName):false;
+  const editingCustom=editName?((p.customMotivs||[]).find(m=>m.id===editName)):null;
+  const builtinDef=isBuiltin?MOTIVATIONS.find(m=>m.id===editName):null;
+  const builtinIcon=isBuiltin?((p.builtinMotivIcons&&p.builtinMotivIcons[editName])||(builtinDef&&builtinDef.emoji)):null;
+  const editing=editName?(editingCustom||(isBuiltin?{id:editName,emoji:builtinIcon,_builtin:true}:null)):null;
   const key=editName||'__new__';
-  if(!UI.addMotiv||UI.addMotiv._for!==key) UI.addMotiv={_for:key,name:editing?editing.id:'',icon:editing?editing.emoji:'😊'};
+  if(!UI.addMotiv||UI.addMotiv._for!==key) UI.addMotiv={_for:key,name:editing?(editing.id||editing.name):'',icon:editing?(editing.emoji||'😊'):'😊',transferTo:null,confirm:false};
   const e=UI.addMotiv;
   const reopen=()=>openOverlay(openAddMotiv(onCreate,editName));
   const done=(nm)=>{ UI.addMotiv=null; Store.save(); openOverlay(null); if(onCreate)onCreate(nm); else render(); };
@@ -1295,6 +1636,19 @@ function openAddMotiv(onCreate,editName){
   const save=()=>{
     const nm=(e.name||'').trim(); if(!nm){ showToast('请输入动机名称'); return; }
     if(editing){
+      if(isBuiltin){
+        if(nm===editName){
+          (p.builtinMotivIcons=p.builtinMotivIcons||{})[editName]=e.icon||builtinIcon;
+          showToast('已更新表情'); done(nm); return;
+        }
+        if(exists(nm)){ showToast('「'+nm+'」已存在'); return; }
+        const old=editName;
+        (p.hiddenBuiltinMotivs=p.hiddenBuiltinMotivs||[]).push(old);
+        (p.customMotivs=p.customMotivs||[]).push({id:nm,emoji:e.icon||builtinIcon||'😊'});
+        p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation=nm; });
+        (p.recurrings||[]).forEach(r=>{ if(r.motivation===old) r.motivation=nm; });
+        showToast('已更新动机'); done(nm); return;
+      }
       if(nm!==editing.id && exists(nm)){ showToast('「'+nm+'」已存在'); return; }
       const old=editing.id; editing.id=nm; editing.emoji=e.icon||editing.emoji;
       p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation=nm; });
@@ -1306,8 +1660,22 @@ function openAddMotiv(onCreate,editName){
       showToast('已新增动机「'+nm+'」'); done(nm);
     }
   };
-  const del=()=>{ if(!editing)return; const old=editing.id; p.customMotivs=p.customMotivs.filter(m=>m.id!==old); p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation='刚需维生'; }); showToast('已删除「'+old+'」，相关账单转为「刚需维生」'); done('刚需维生'); };
+  const del=()=>{
+    if(!editing)return;
+    const old=editing.id||editName;
+    const fallback=allMotivs(p).map(m=>m.id).find(id=>id!==old)||'刚需维生';
+    const tt=e.transferTo||fallback;
+    if(isBuiltin){ (p.hiddenBuiltinMotivs=p.hiddenBuiltinMotivs||[]).push(old); if(p.builtinMotivIcons)delete p.builtinMotivIcons[old]; }
+    else { p.customMotivs=(p.customMotivs||[]).filter(m=>m.id!==old); }
+    p.transactions.forEach(t=>{ if(t.motivation===old) t.motivation=tt; });
+    (p.recurrings||[]).forEach(r=>{ if(r.motivation===old) r.motivation=tt; });
+    showToast('已删除「'+old+'」，账单转为「'+tt+'」'); done(tt);
+  };
+  const others=allMotivs(p).map(m=>m.id).filter(x=>x!==editName);
+  const hasTx=editName?p.transactions.some(t=>t.motivation===editName):false;
+  const tchip=(label,on,onclick)=>h('button',{class:'tap',onclick,style:{flexShrink:0,padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700,whiteSpace:'nowrap',background:on?'linear-gradient(135deg,#7C5CFC,#9B7AFF)':'#F4F5FB',color:on?'#fff':'#6B7280'}},label);
   const body=h('div',{},
+    isBuiltin?h('div',{style:{padding:'8px 12px',borderRadius:'10px',background:'rgba(124,92,252,.06)',marginBottom:'12px',fontSize:'11px',color:'#7B6FAE'}},'💡 内置动机，可改名 / 换表情 / 删除；改名或删除后不影响历史账单（自动跟随）'):null,
     h('div',{class:'row',style:{gap:'12px',alignItems:'center',marginBottom:'14px'}},
       h('div',{class:'ib',style:{width:'52px',height:'52px',borderRadius:'14px',fontSize:'26px',flexShrink:0,background:'#F4F5FB',border:'1.5px solid rgba(124,92,252,.15)'}},e.icon),
       h('input',{value:e.name,placeholder:'动机名称（如 犒劳自己 / 冲动跟风）',class:'field',style:{flex:1,fontSize:'15px'},oninput:(ev)=>{e.name=ev.target.value;}}),
@@ -1315,21 +1683,32 @@ function openAddMotiv(onCreate,editName){
     h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'选个表情'),
     h('div',{class:'row',style:{gap:'8px',flexWrap:'wrap',marginBottom:'18px'}},MOTIV_EMOJIS.map(sy=>h('button',{class:'ib tap',onclick:()=>{e.icon=sy;reopen();},style:{width:'42px',height:'42px',borderRadius:'10px',fontSize:'20px',background:e.icon===sy?'rgba(124,92,252,.14)':'#F8F9FE',border:'1.5px solid '+(e.icon===sy?'#7C5CFC':'transparent')}},sy))),
     h('button',{class:'ib tap',onclick:save,style:{width:'100%',padding:'14px',borderRadius:'14px',fontSize:'15px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:editing?'10px':'0'}},editing?'保存修改':'创建动机'),
-    editing?h('button',{class:'ib tap',onclick:del,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该动机'):null,
+    editing?(
+      e.confirm?h('div',{style:{padding:'14px',borderRadius:'14px',background:'#FFF0F5',border:'1px solid rgba(255,107,157,.2)'}},
+        hasTx&&others.length?h('div',{},
+          h('p',{style:{fontSize:'12px',color:'#C04470',fontWeight:700,marginBottom:'8px'}},'该动机下有账单，转移到？'),
+          h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px',marginBottom:'12px'}},others.map(o=>{const mm=allMotivs(p).find(m=>m.id===o);return tchip((mm?mm.emoji:'')+' '+o,e.transferTo===o,()=>{e.transferTo=(e.transferTo===o?null:o);reopen();});})),
+        ):null,
+        h('div',{class:'row',style:{gap:'10px'}},
+          h('button',{class:'ib tap',onclick:del,style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:800,color:'#fff',background:'#FF4D6D'}},'确认删除'),
+          h('button',{class:'ib tap',onclick:()=>{e.confirm=false;e.transferTo=null;reopen();},style:{flex:1,padding:'12px',borderRadius:'12px',fontSize:'14px',fontWeight:700,color:'#9B8EC4',background:'#fff'}},'取消'),
+        ),
+      ):h('button',{class:'ib tap',onclick:()=>{e.confirm=true;reopen();},style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:700,color:'#E8527A',background:'#FFF0F5'}},h('span',{class:'ib',html:I.trash({color:'#E8527A',size:16})}),'删除该动机')
+    ):null,
   );
   return sheet(editing?'编辑动机':'新增购买动机',editing?'改名称/表情或删除':'自定义你的消费动机',body);
 }
 function openManageMotivations(){
-  const p=currentProfile(); const customs=(p.customMotivs||[]);
+  const p=currentProfile();
+  const list=allMotivs(p);
   const reopen=()=>openOverlay(openManageMotivations());
+  const row=(m)=>{const builtin=isBuiltinMotiv(m.id);const cnt=p.transactions.filter(t=>t.motivation===m.id).length;return h('button',{class:'between tap',onclick:()=>openOverlay(openAddMotiv(reopen,m.id)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},m.emoji),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},m.id),builtin?h('span',{style:{fontSize:'10px',color:'#9B8EC4',padding:'2px 6px',borderRadius:'8px',background:'rgba(124,92,252,.08)'}},'内置'):null,cnt?h('span',{style:{fontSize:'10px',color:'#7C5CFC'}},cnt+'笔'):null),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}));};
   const body=h('div',{},
-    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'自定义动机（可改名 / 换表情 / 删除）'),
-    customs.length?h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},customs.map(c=>h('button',{class:'between tap',onclick:()=>openOverlay(openAddMotiv(reopen,c.id)),style:{width:'100%',padding:'12px 14px',borderRadius:'12px',background:'#F8F9FE'}},h('div',{class:'row',style:{gap:'10px'}},h('span',{style:{fontSize:'20px'}},c.emoji),h('span',{style:{fontSize:'14px',color:'#1A1A2E',fontWeight:700}},c.id)),h('span',{class:'ib',html:I.edit({color:'#7C5CFC',size:16})}))))
-      :h('p',{style:{fontSize:'12px',color:'#B0B4C8',textAlign:'center',padding:'12px 0 16px'}},'还没有自定义动机'),
-    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddMotiv(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)',marginBottom:'14px'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增动机'),
-    h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'#F4F5FB'}},h('p',{style:{fontSize:'11px',color:'#9B8EC4',lineHeight:1.7}},'内置动机：'+MOTIVATIONS.map(m=>m.id).join(' / ')+'（系统默认，不可删除）')),
+    h('p',{style:{fontSize:'12px',color:'#7B6FAE',fontWeight:700,marginBottom:'8px'}},'点任意动机可改名 / 换表情 / 删除 · 删除时会提示转移到哪里'),
+    h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',marginBottom:'14px'}},list.map(row)),
+    h('button',{class:'ib tap',onclick:()=>openOverlay(openAddMotiv(reopen)),style:{width:'100%',padding:'13px',borderRadius:'12px',fontSize:'14px',gap:'6px',fontWeight:800,color:'#fff',background:'linear-gradient(135deg,#7C5CFC,#9B7AFF)'}},h('span',{class:'ib',html:I.plus({color:'#fff',size:16})}),'新增自定义动机'),
   );
-  return sheet('管理购买动机','增 / 删 / 改自定义动机',body);
+  return sheet('管理购买动机','编辑 / 新增 / 删除（含默认动机）',body);
 }
 /* ---------- 定期扣除管理 ---------- */
 function openRecurrings(){
@@ -1692,7 +2071,7 @@ ROUTES['/budget']=function(params){
 
   const header=h('div',{class:'px5 head-grad',style:{paddingTop:'58px',paddingBottom:'16px'}},
     h('div',{class:'between',style:{alignItems:'flex-start',marginBottom:p.goals.length?'16px':'0'}},h('div',{},h('h1',{style:{fontSize:'24px',color:'#1A1A2E',fontWeight:900,marginBottom:'2px'}},'欲望许愿池 🌊'),h('p',{style:{fontSize:'14px',color:'#7B6FAE',fontWeight:500}},'每一次克制都是进步')),h('button',{class:'ib tap',onclick:()=>navigate('/budget/settings'),style:{marginTop:'4px',width:'36px',height:'36px',borderRadius:'50%',flexShrink:0,background:'rgba(255,255,255,.7)',boxShadow:'0 2px 8px rgba(124,92,252,.12)'},html:I.settings2({color:'#7C5CFC',size:16})})),
-    p.goals.length?h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},p.goals.map(g=>{const active=b.goalId===g.id;return h('button',{class:'row tap',onclick:()=>{b.goalId=g.id;render();},style:{flexShrink:0,gap:'8px',padding:'8px 12px',borderRadius:'12px',background:active?'rgba(255,255,255,.9)':'rgba(255,255,255,.5)',border:'1.5px solid '+(active?g.color:'transparent'),boxShadow:active?('0 4px 12px '+g.color+'25'):'none'}},h('span',{style:{fontSize:'16px'}},g.icon),h('div',{style:{textAlign:'left'}},h('p',{style:{fontSize:'12px',lineHeight:1,color:active?g.color:'#9B8EC4',fontWeight:700}},g.name),h('p',{style:{fontSize:'10px',marginTop:'2px',color:'#C8CBD8'}},(Math.round((g.current/g.target)*1000)/10)+'%')));}),h('button',{class:'ib tap','aria-label':'新增心愿',onclick:()=>openOverlay(openGoalNew()),style:{flexShrink:0,minWidth:'40px',alignSelf:'stretch',borderRadius:'12px',background:'rgba(255,255,255,.55)',border:'1.5px dashed rgba(124,92,252,.4)'},html:I.plus({color:'#7C5CFC',size:18})})):null,
+    p.goals.length?h('div',{class:'row noscroll',style:{gap:'8px',overflowX:'auto',paddingBottom:'4px'}},[h('button',{class:'row tap','aria-label':'管理心愿（新增/排序）',onclick:()=>openOverlay(openGoalManage()),style:{flexShrink:0,gap:'5px',alignItems:'center',padding:'8px 12px',alignSelf:'stretch',borderRadius:'12px',background:'rgba(255,255,255,.75)',border:'1.5px solid rgba(124,92,252,.35)'}},h('span',{style:{fontSize:'15px',color:'#7C5CFC',fontWeight:900,lineHeight:1}},'≡'),h('span',{style:{fontSize:'12px',color:'#7C5CFC',fontWeight:700}},'管理'))].concat(p.goals.map(g=>{const active=b.goalId===g.id;return h('button',{class:'row tap',onclick:()=>{b.goalId=g.id;render();},style:{flexShrink:0,gap:'8px',padding:'8px 12px',borderRadius:'12px',background:active?'rgba(255,255,255,.9)':'rgba(255,255,255,.5)',border:'1.5px solid '+(active?g.color:'transparent'),boxShadow:active?('0 4px 12px '+g.color+'25'):'none'}},h('span',{style:{fontSize:'16px'}},g.icon),h('div',{style:{textAlign:'left'}},h('p',{style:{fontSize:'12px',lineHeight:1,color:active?g.color:'#9B8EC4',fontWeight:700}},g.name),h('p',{style:{fontSize:'10px',marginTop:'2px',color:'#C8CBD8'}},(Math.round((g.current/g.target)*1000)/10)+'%')));}))):null,
   );
 
   if(!goal){
@@ -1861,12 +2240,12 @@ function scheduleMemCard(prompt){ if(!prompt)return; setTimeout(()=>{ UI.chat.me
 ROUTES['/coach']=function(){
   const p=currentProfile(), c=UI.chat, coach=COACHES[p.coach]||COACHES[DEFAULT_COACH];
   if(c.messages===null){ c.messages=buildInitialMessages(p,c.pendingQ); if(c.pendingQ)scheduleMemCard('你希望了解「'+c.pendingQ+'」相关的分析'); }
-  const FRAME_H=846,HEADER_H=108,INPUT_H=68;
+  const _sc=document.getElementById('scroller'); const FRAME_H=(_sc&&_sc.clientHeight>200?_sc.clientHeight:846), HEADER_H=108, INPUT_H=68;
   const send=(text)=>{
     const q=(text!=null?text:(($('#chat-input')&&$('#chat-input').value)||'')).trim(); if(!q)return;
-    c.showMemCard=false; c.messages.push({id:Date.now(),role:'user',text:q}); c.typing=true; render();
+    c.showMemCard=false; c.messages.push({id:Date.now(),role:'user',text:q}); c.typing=true; c._refocus=true; render();
     const memoryPrompt=q.length>5?('你希望了解「'+q.slice(0,14)+(q.length>14?'…':'')+'」相关的建议'):null;
-    const finish=(txt)=>{ c.typing=false; c.messages.push({id:Date.now()+1,role:'ai',text:txt,memoryPrompt}); render(); scheduleMemCard(memoryPrompt); };
+    const finish=(txt)=>{ c.typing=false; c.messages.push({id:Date.now()+1,role:'ai',text:txt,memoryPrompt}); c._refocus=true; render(); scheduleMemCard(memoryPrompt); };
     if(aiConfigured()){
       aiReply(p,c.messages).then(t=>finish(t)).catch(e=>{ finish(coachReply(p,q)+'\n\n（⚠️ 实时 AI 调用失败，已切换本地分析'+(e&&e.message?('；原因：'+e.message):'')+'）'); });
     } else { setTimeout(()=>finish(coachReply(p,q)),900); }
@@ -1890,7 +2269,7 @@ ROUTES['/coach']=function(){
       ),
     ),
     h('div',{style:{position:'absolute',bottom:0,left:0,right:0,height:INPUT_H+'px',background:'#fff',borderTop:'1px solid rgba(124,92,252,.08)',padding:'10px 16px 12px',display:'flex',alignItems:'center',gap:'10px'}},
-      h('div',{class:'row grow',style:{gap:'8px',borderRadius:'22px',padding:'8px 14px',background:'#F4F5FB'}},h('input',{id:'chat-input',value:inputVal,placeholder:'问我任何理财问题...',oninput:(e)=>{c._draft=e.target.value;const btn=$('#chat-send');if(btn){const on=!!e.target.value.trim();btn.style.background=on?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF';const sv=btn.querySelector('svg');if(sv)sv.setAttribute('stroke',on?'#fff':'#B0B4C8');}},onkeydown:(e)=>{if(e.key==='Enter'){c._draft='';send(e.target.value);}},style:{flex:1,background:'transparent',border:'none',outline:'none',fontSize:'13px',color:'#1A1A2E'}}),h('button',{id:'chat-send',class:'ib tap',onclick:()=>{const v=c._draft||'';c._draft='';send(v);},style:{width:'32px',height:'32px',borderRadius:'50%',flexShrink:0,background:inputVal.trim()?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF'},html:I.send({color:inputVal.trim()?'#fff':'#B0B4C8',size:14})})),
+      h('div',{class:'row grow',style:{gap:'8px',borderRadius:'22px',padding:'8px 14px',background:'#F4F5FB'}},h('input',{id:'chat-input',value:inputVal,placeholder:'问我任何理财问题...',ref:(el)=>{ if(UI.chat._refocus){ setTimeout(()=>{try{el.focus({preventScroll:true});}catch(_){}} ,0); UI.chat._refocus=false; } },oninput:(e)=>{c._draft=e.target.value;const btn=$('#chat-send');if(btn){const on=!!e.target.value.trim();btn.style.background=on?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF';const sv=btn.querySelector('svg');if(sv)sv.setAttribute('stroke',on?'#fff':'#B0B4C8');}},onkeydown:(e)=>{if(e.key==='Enter'){e.preventDefault();const v=e.target.value;c._draft='';send(v);}},style:{flex:1,background:'transparent',border:'none',outline:'none',fontSize:'13px',color:'#1A1A2E'}}),h('button',{id:'chat-send',class:'ib tap',onclick:()=>{const v=c._draft||'';c._draft='';send(v);},style:{width:'32px',height:'32px',borderRadius:'50%',flexShrink:0,background:inputVal.trim()?'linear-gradient(135deg,#7C5CFC,#FF6B9D)':'#E2E4EF'},html:I.send({color:inputVal.trim()?'#fff':'#B0B4C8',size:14})})),
     ),
     c.toast?h('div',{class:'toast',style:{bottom:(INPUT_H+12)+'px'}},h('span',{class:'ib',html:I.check({color:'#fff',size:14})}),'已加入记忆库'):null,
     c.showMemModal?h('div',{},
@@ -1907,7 +2286,7 @@ ROUTES['/coach']=function(){
 /* __APPEND_SCREENS__ */
 
 /* ============================================================================ BOOT */
-function boot(){ const pp=currentProfile(); if(pp&&processRecurrings(pp))Store.save(); if(!location.hash) location.hash='/'; render(); }
+function boot(){ const pp=currentProfile(); let _n=0; if(pp){ _n=processRecurrings(pp); if(_n)Store.save(); } if(!location.hash) location.hash='/'; render(); if(_n>0) setTimeout(()=>showToast('已自动补记 '+_n+' 笔定期扣除'),600); }
 /* 启动加载页（异步打开数据库期间显示） */
 $('#app').appendChild(h('div',{style:{minHeight:'852px',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(170deg,#EDE8FF,#FFE8F3)'}},
   h('div',{style:{textAlign:'center'}},
@@ -1920,6 +2299,8 @@ window.addEventListener('pointerup',()=>{ if(UI.add.recording) stopVoice(); });
 window.addEventListener('pointercancel',()=>{ if(UI.add.recording) stopVoice(); });
 window.addEventListener('mouseup',()=>{ if(UI.add.recording) stopVoice(); });
 window.addEventListener('touchend',()=>{ if(UI.add.recording) stopVoice(); });
+/* 弹层内任意输入即标记"有未保存修改"，关闭时二次确认（render/关闭时重置） */
+(function(){ const ov=$('#overlay'); if(ov) ov.addEventListener('input',()=>{ UI._dirtySheet=true; },true); })();
 /* PWA：部署到 http(s) 时注册离线缓存（本地 file:// 自动跳过） */
 if(typeof navigator!=='undefined'&&navigator.serviceWorker&&location.protocol.indexOf('http')===0){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>

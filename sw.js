@@ -1,5 +1,5 @@
 /* MoodLedger Service Worker — 离线缓存核心文件 */
-const CACHE = 'moodledger-v11';
+const CACHE = 'moodledger-v13';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
